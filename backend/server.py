@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+rom fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -44,8 +45,9 @@ class UserResponse(BaseModel):
     plan_price: int = 0
     is_admin: bool = False
 
-# JWT Secret
+# JWT Secret and Security
 JWT_SECRET = os.getenv("JWT_SECRET", "fallback-secret-key")
+security = HTTPBearer()
 
 def create_access_token(user_id: str) -> str:
     payload = {
@@ -53,6 +55,18 @@ def create_access_token(user_id: str) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(days=30)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return user_id
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Health check endpoints
 @app.get("/")
@@ -81,6 +95,14 @@ async def test_db():
 # Add OPTIONS handler for CORS preflight
 @app.options("/api/auth/google/callback")
 async def google_callback_preflight():
+    return {"message": "OK"}
+
+@app.options("/api/user/me")
+async def user_me_preflight():
+    return {"message": "OK"}
+
+@app.options("/api/auth/logout")
+async def logout_preflight():
     return {"message": "OK"}
     
 # Google OAuth endpoints
@@ -145,6 +167,34 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
     except Exception as e:
         print(f"Google auth error: {e}")
         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
+
+# Get current user info
+@app.get("/api/user/me")
+async def get_current_user(user_id: str = Depends(get_current_user_id)):
+    """Get current user information"""
+    try:
+        db = get_database()
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        return UserResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user["name"],
+            plan=user.get("plan", "free"),
+            plan_price=user.get("plan_price", 0),
+            is_admin=user.get("is_admin", False)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+# Logout endpoint
+@app.post("/api/auth/logout")
+async def logout():
+    """Handle user logout"""
+    return {"message": "Logged out successfully"}
 
 if __name__ == "__main__":
     import uvicorn
