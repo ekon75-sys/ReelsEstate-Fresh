@@ -78,6 +78,11 @@ async def test_db():
     except Exception as e:
         return {"status": "error", "database": "failed", "error": str(e)}
 
+# Add OPTIONS handler for CORS preflight
+@app.options("/api/auth/google/callback")
+async def google_callback_preflight():
+    return {"message": "OK"}
+    
 # Google OAuth endpoints
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
