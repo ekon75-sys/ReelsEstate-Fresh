@@ -1,4 +1,4 @@
-rom fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -92,13 +92,17 @@ async def test_db():
     except Exception as e:
         return {"status": "error", "database": "failed", "error": str(e)}
 
-# Add OPTIONS handler for CORS preflight
+# Add OPTIONS handlers for CORS preflight
 @app.options("/api/auth/google/callback")
 async def google_callback_preflight():
     return {"message": "OK"}
 
 @app.options("/api/user/me")
 async def user_me_preflight():
+    return {"message": "OK"}
+
+@app.options("/api/auth/me")
+async def auth_me_preflight():
     return {"message": "OK"}
 
 @app.options("/api/auth/logout")
@@ -168,10 +172,32 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         print(f"Google auth error: {e}")
         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
-# Get current user info
+# Get current user info - /api/user/me endpoint
 @app.get("/api/user/me")
 async def get_current_user(user_id: str = Depends(get_current_user_id)):
     """Get current user information"""
+    try:
+        db = get_database()
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        return UserResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user["name"],
+            plan=user.get("plan", "free"),
+            plan_price=user.get("plan_price", 0),
+            is_admin=user.get("is_admin", False)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+# Get current user info - /api/auth/me endpoint (alternative)
+@app.get("/api/auth/me")
+async def get_auth_user(user_id: str = Depends(get_current_user_id)):
+    """Get current authenticated user information"""
     try:
         db = get_database()
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
