@@ -11,7 +11,6 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
 load_dotenv()
-
 app = FastAPI(title="ReelsEstate API")
 
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -40,12 +39,6 @@ class UserResponse(BaseModel):
     plan: str = "free"
     plan_price: int = 0
     is_admin: bool = False
-
-class BusinessInfoRequest(BaseModel):
-    business_name: str = ""
-    business_address: str = ""
-    phone: str = ""
-    website: str = ""
 
 JWT_SECRET = os.getenv("JWT_SECRET", "fallback-secret-key")
 security = HTTPBearer()
@@ -84,16 +77,6 @@ async def health():
 @app.get("/api/health")
 async def api_health():
     return {"status": "ok", "service": "ReelsEstate API"}
-
-@app.get("/api/test-db")
-async def test_db():
-    try:
-        db = get_database()
-        await db.test.insert_one({"test": "connection"})
-        await db.test.delete_one({"test": "connection"})
-        return {"status": "ok", "database": "connected"}
-    except Exception as e:
-        return {"status": "error", "database": "failed", "error": str(e)}
 
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
@@ -150,24 +133,6 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
-@app.get("/api/user/me")
-async def get_current_user(user_id: str = Depends(get_current_user_id)):
-    try:
-        db = get_database()
-        user = await db.users.find_one({"id": user_id}, {"_id": 0})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return UserResponse(
-            id=user["id"],
-            email=user["email"],
-            name=user["name"],
-            plan=user.get("plan", "free"),
-            plan_price=user.get("plan_price", 0),
-            is_admin=user.get("is_admin", False)
-        )
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
 @app.get("/api/auth/me")
 async def get_auth_user(user_id: str = Depends(get_current_user_id)):
     try:
@@ -185,38 +150,6 @@ async def get_auth_user(user_id: str = Depends(get_current_user_id)):
         )
     except Exception as e:
         raise HTTPException(status_code=401, detail="Authentication required")
-
-@app.post("/api/business-info")
-async def save_business_info(business_info: BusinessInfoRequest, user_id: str = Depends(get_current_user_id)):
-    try:
-        db = get_database()
-        await db.users.update_one(
-            {"id": user_id},
-            {"$set": {
-                "business_name": business_info.business_name,
-                "business_address": business_info.business_address,
-                "phone": business_info.phone,
-                "website": business_info.website,
-                "onboarding_step": 2
-            }}
-        )
-        return {"message": "Business information saved successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to save business information")
-
-@app.get("/api/onboarding/progress")
-async def get_onboarding_progress(user_id: str = Depends(get_current_user_id)):
-    try:
-        db = get_database()
-        user = await db.users.find_one({"id": user_id}, {"_id": 0})
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {
-            "step": user.get("onboarding_step", 1),
-            "completed": user.get("onboarding_step", 1) >= 4
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to get onboarding progress")
 
 @app.post("/api/auth/logout")
 async def logout():
