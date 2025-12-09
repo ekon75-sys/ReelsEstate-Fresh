@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+(from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 
 load_dotenv()
+
 app = FastAPI(title="ReelsEstate API")
 
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
