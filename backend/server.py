@@ -9,6 +9,7 @@ import httpx
 import jwt
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
+import traceback
 
 load_dotenv()
 
@@ -82,6 +83,8 @@ async def api_health():
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
     try:
+        print(f"Received Google auth code: {auth_data.code[:10]}...")  # Log first 10 chars
+        
         token_url = "https://oauth2.googleapis.com/token"
         token_data = {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -91,16 +94,24 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
             "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI")
         }
         
+        print(f"Token request data: client_id={token_data['client_id'][:10]}..., redirect_uri={token_data['redirect_uri']}")
+        
         async with httpx.AsyncClient() as client:
             token_response = await client.post(token_url, data=token_data)
+            print(f"Google token response status: {token_response.status_code}")
+            print(f"Google token response: {token_response.text}")
+            
             token_json = token_response.json()
             
             if "access_token" not in token_json:
-                raise HTTPException(status_code=400, detail="Failed to get access token")
+                error_msg = token_json.get("error_description", token_json.get("error", "Unknown error"))
+                raise HTTPException(status_code=400, detail=f"Google OAuth error: {error_msg}")
             
             user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token_json['access_token']}"
             user_response = await client.get(user_info_url)
             user_info = user_response.json()
+            
+            print(f"User info received: {user_info.get('email')}")
             
             db = get_database()
             user = await db.users.find_one({"email": user_info['email']}, {"_id": 0})
@@ -117,6 +128,9 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
                     "is_admin": (user_info['email'] == "ekon75@hotmail.com")
                 }
                 await db.users.insert_one(user)
+                print(f"Created new user: {user['email']}")
+            else:
+                print(f"Found existing user: {user['email']}")
             
             token = create_access_token(user["id"])
             
@@ -132,6 +146,8 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
                 )
             }
     except Exception as e:
+        print(f"OAuth error details: {type(e).__name__}: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
 @app.get("/api/auth/me")
