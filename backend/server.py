@@ -258,6 +258,52 @@ async def get_onboarding_progress(authorization: str = Header(None)):
         "completed_steps": user.get("onboarding_completed_steps", {})
     }
 
+# File upload endpoints
+@app.post("/api/upload/logo")
+async def upload_logo(file: UploadFile = File(...), authorization: str = Header(None)):
+    """Upload company logo"""
+    user = await get_current_user(authorization)
+    
+    # Validate file type
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PNG, JPG, and SVG are allowed")
+    
+    # Create user-specific directory
+    user_dir = UPLOAD_DIR / user["id"]
+    user_dir.mkdir(exist_ok=True)
+    
+    # Save file
+    file_extension = file.filename.split('.')[-1]
+    file_path = user_dir / f"logo.{file_extension}"
+    
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Update user with logo URL
+    logo_url = f"/uploads/{user['id']}/logo.{file_extension}"
+    db = get_database()
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "logo_url": logo_url,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "logo_url": logo_url}
+
+@app.get("/api/branding")
+async def get_branding(authorization: str = Header(None)):
+    """Get user branding information"""
+    user = await get_current_user(authorization)
+    
+    return {
+        "logo_url": user.get("logo_url", ""),
+        "primary_color": user.get("primary_color", ""),
+        "secondary_color": user.get("secondary_color", "")
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
