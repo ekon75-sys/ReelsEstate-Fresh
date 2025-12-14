@@ -248,9 +248,19 @@ const OnboardingStep4 = () => {
                     </div>
                   </div>
                   {connected[platform.name] ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <Check className="w-5 h-5" />
-                      <span className="text-sm font-medium">Connected</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 text-green-600">
+                        <Check className="w-5 h-5" />
+                        <span className="text-sm font-medium">Connected</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDisconnect(platform.name)}
+                        data-testid={`disconnect-${platform.name.toLowerCase()}-btn`}
+                      >
+                        Disconnect
+                      </Button>
                     </div>
                   ) : (
                     <Button
