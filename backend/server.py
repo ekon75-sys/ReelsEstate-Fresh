@@ -349,13 +349,14 @@ async def get_facebook_auth_url(authorization: str = Header(None)):
         raise HTTPException(status_code=500, detail="Facebook App ID not configured")
     
     # Include all necessary permissions for Instagram integration
+    # Note: Instagram Business API uses Facebook permissions, not separate Instagram scopes
     scopes = [
-        "pages_show_list",           # Required to list Pages
-        "pages_manage_posts",        # Post to Pages
-        "pages_read_engagement",     # Read page engagement
-        "instagram_basic",           # Basic Instagram access
-        "instagram_content_publish", # Publish Instagram content
-        "business_management"        # Manage business assets
+        "pages_show_list",              # Required to list Pages
+        "pages_manage_posts",           # Post to Pages (also works for Instagram)
+        "pages_read_engagement",        # Read page engagement
+        "instagram_manage_comments",    # Manage Instagram comments
+        "instagram_manage_insights",    # Read Instagram insights
+        "business_management"           # Manage business assets
     ]
     scope_string = ",".join(scopes)
     
