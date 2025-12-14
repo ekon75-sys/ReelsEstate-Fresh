@@ -17,6 +17,13 @@ load_dotenv()
 
 app = FastAPI(title="ReelsEstate API")
 
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = Path("/app/backend/uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Mount static files for serving uploads
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
 # CORS middleware
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
