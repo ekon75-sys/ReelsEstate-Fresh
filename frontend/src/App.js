@@ -51,6 +51,7 @@ function App() {
           <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
           
           {/* Protected Onboarding Routes */}
           <Route path="/onboarding/step-1" element={<ProtectedRoute><OnboardingStep1 /></ProtectedRoute>} />
