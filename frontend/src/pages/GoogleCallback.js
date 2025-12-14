@@ -38,8 +38,16 @@ const GoogleCallback = () => {
 
         toast.success('Successfully logged in with Google!');
         
-        // Force page reload to update AuthContext
-        window.location.href = '/dashboard';
+        // Check if user needs onboarding
+        const user = response.data.user;
+        const onboardingStep = user.onboarding_step || 0;
+        
+        // Redirect based on onboarding status
+        if (onboardingStep === 0 || onboardingStep < 6) {
+          window.location.href = `/onboarding/step-${onboardingStep + 1}`;
+        } else {
+          window.location.href = '/dashboard';
+        }
       } catch (error) {
         console.error('Google callback error:', error);
         setError(error.message);
