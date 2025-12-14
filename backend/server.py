@@ -332,6 +332,104 @@ async def save_branding(branding: BrandingRequest, authorization: str = Header(N
     
     return {"status": "success", "message": "Branding preferences saved"}
 
+# Facebook OAuth endpoints
+@app.get("/api/facebook/auth-url")
+async def get_facebook_auth_url(authorization: str = Header(None)):
+    """Generate Facebook OAuth URL"""
+    user = await get_current_user(authorization)
+    
+    facebook_app_id = os.getenv("FACEBOOK_APP_ID")
+    redirect_uri = "https://reels-estate.app/auth/facebook/callback"
+    
+    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope=pages_manage_posts,pages_read_engagement&state={user['id']}"
+    
+    return {"auth_url": auth_url}
+
+@app.post("/api/facebook/callback")
+async def facebook_callback(code: str, state: str):
+    """Handle Facebook OAuth callback"""
+    try:
+        facebook_app_id = os.getenv("FACEBOOK_APP_ID")
+        facebook_app_secret = os.getenv("FACEBOOK_APP_SECRET")
+        redirect_uri = "https://reels-estate.app/auth/facebook/callback"
+        
+        # Exchange code for access token
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://graph.facebook.com/v20.0/oauth/access_token",
+                params={
+                    "client_id": facebook_app_id,
+                    "client_secret": facebook_app_secret,
+                    "redirect_uri": redirect_uri,
+                    "code": code
+                }
+            )
+            response.raise_for_status()
+            token_data = response.json()
+            access_token = token_data["access_token"]
+            
+            # Get user's Facebook pages
+            response = await client.get(
+                "https://graph.facebook.com/v20.0/me/accounts",
+                params={"access_token": access_token}
+            )
+            response.raise_for_status()
+            pages_data = response.json()
+            
+            # Store in database
+            db = get_database()
+            user_id = state  # We passed user_id as state
+            
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {
+                    "facebook_access_token": access_token,
+                    "facebook_pages": pages_data.get("data", []),
+                    "facebook_connected": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            
+            return {"status": "success", "message": "Facebook connected successfully"}
+            
+    except Exception as e:
+        print(f"Facebook callback error: {e}")
+        raise HTTPException(status_code=400, detail=f"Facebook connection failed: {str(e)}")
+
+@app.get("/api/social-media")
+async def get_social_media_connections(authorization: str = Header(None)):
+    """Get user's social media connections"""
+    user = await get_current_user(authorization)
+    
+    connections = [
+        {
+            "platform": "Facebook",
+            "connected": user.get("facebook_connected", False)
+        },
+        {
+            "platform": "Instagram",
+            "connected": False
+        },
+        {
+            "platform": "YouTube",
+            "connected": False
+        },
+        {
+            "platform": "TikTok",
+            "connected": False
+        },
+        {
+            "platform": "LinkedIn",
+            "connected": False
+        },
+        {
+            "platform": "Twitter",
+            "connected": False
+        }
+    ]
+    
+    return connections
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
