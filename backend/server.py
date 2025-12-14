@@ -78,6 +78,45 @@ async def test_db():
     except Exception as e:
         return {"status": "error", "database": "failed", "error": str(e)}
 
+# Auth middleware to get current user from JWT
+from fastapi import Header
+
+async def get_current_user(authorization: str = Header(None)):
+    """Get current user from JWT token"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    token = authorization.replace("Bearer ", "")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        user_id = payload.get("user_id")
+        
+        db = get_database()
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# Get current user endpoint
+@app.get("/api/auth/me")
+async def get_me(authorization: str = Header(None)):
+    """Get current authenticated user"""
+    user = await get_current_user(authorization)
+    return UserResponse(
+        id=user["id"],
+        email=user["email"],
+        name=user["name"],
+        plan=user.get("plan", "free"),
+        plan_price=user.get("plan_price", 0),
+        is_admin=user.get("is_admin", False)
+    )
+
 # Google OAuth endpoints
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
