@@ -8,6 +8,7 @@ import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import GoogleCallback from '@/pages/GoogleCallback';
+import FacebookCallback from '@/pages/FacebookCallback';
 import DashboardPage from '@/pages/DashboardPage';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
