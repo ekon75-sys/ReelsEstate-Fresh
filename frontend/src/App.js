@@ -12,6 +12,7 @@ import FacebookCallback from '@/pages/FacebookCallback';
 import DashboardPage from '@/pages/DashboardPage';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
+import DataDeletion from '@/pages/DataDeletion';
 import OnboardingStep1 from '@/pages/onboarding/Step1';
 import OnboardingStep2 from '@/pages/onboarding/Step2';
 import OnboardingStep3 from '@/pages/onboarding/Step3';
