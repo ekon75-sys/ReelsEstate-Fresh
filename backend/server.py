@@ -547,6 +547,34 @@ async def get_social_media_connections(authorization: str = Header(None)):
     
     return connections
 
+class DisconnectRequest(BaseModel):
+    platform: str
+
+@app.post("/api/social-media/disconnect")
+async def disconnect_social_media(request: DisconnectRequest, authorization: str = Header(None)):
+    """Disconnect a social media platform"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    platform = request.platform
+    
+    update_fields = {"updated_at": datetime.now(timezone.utc)}
+    
+    if platform == "Facebook":
+        update_fields["facebook_connected"] = False
+        update_fields["facebook_access_token"] = None
+        update_fields["facebook_pages"] = []
+    elif platform == "Instagram":
+        update_fields["instagram_connected"] = False
+        update_fields["instagram_accounts"] = {}
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": update_fields}
+    )
+    
+    return {"status": "success", "message": f"{platform} disconnected"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
