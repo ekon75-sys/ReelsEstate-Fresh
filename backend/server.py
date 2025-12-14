@@ -403,6 +403,105 @@ async def facebook_callback(code: str, state: str):
         print(f"Facebook callback error: {e}")
         raise HTTPException(status_code=400, detail=f"Facebook connection failed: {str(e)}")
 
+@app.get("/api/instagram/accounts")
+async def get_instagram_accounts(authorization: str = Header(None)):
+    """Get Instagram Business accounts linked to user's Facebook Pages"""
+    user = await get_current_user(authorization)
+    
+    if not user.get("facebook_access_token"):
+        raise HTTPException(status_code=401, detail="Facebook not connected")
+    
+    try:
+        facebook_token = user["facebook_access_token"]
+        instagram_accounts = []
+        
+        async with httpx.AsyncClient() as client:
+            # Get Facebook Pages
+            pages_response = await client.get(
+                f"https://graph.facebook.com/v20.0/me/accounts",
+                params={
+                    "access_token": facebook_token,
+                    "fields": "id,name,access_token"
+                }
+            )
+            pages_response.raise_for_status()
+            pages = pages_response.json().get("data", [])
+            
+            # For each page, get linked Instagram accounts
+            for page in pages:
+                try:
+                    ig_response = await client.get(
+                        f"https://graph.facebook.com/v20.0/{page['id']}",
+                        params={
+                            "access_token": page["access_token"],
+                            "fields": "instagram_business_account"
+                        }
+                    )
+                    ig_response.raise_for_status()
+                    ig_data = ig_response.json()
+                    
+                    if "instagram_business_account" in ig_data:
+                        ig_account_id = ig_data["instagram_business_account"]["id"]
+                        
+                        # Get Instagram account details
+                        ig_details_response = await client.get(
+                            f"https://graph.facebook.com/v20.0/{ig_account_id}",
+                            params={
+                                "access_token": page["access_token"],
+                                "fields": "id,username,profile_picture_url"
+                            }
+                        )
+                        ig_details_response.raise_for_status()
+                        ig_details = ig_details_response.json()
+                        
+                        instagram_accounts.append({
+                            "ig_account_id": ig_details["id"],
+                            "username": ig_details.get("username", ""),
+                            "profile_picture": ig_details.get("profile_picture_url", ""),
+                            "facebook_page_id": page["id"],
+                            "facebook_page_name": page["name"],
+                            "page_access_token": page["access_token"]
+                        })
+                except Exception as e:
+                    print(f"Failed to get Instagram for page {page['id']}: {e}")
+                    continue
+        
+        return {"instagram_accounts": instagram_accounts}
+        
+    except Exception as e:
+        print(f"Failed to get Instagram accounts: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/instagram/connect")
+async def connect_instagram_account(
+    ig_account_id: str,
+    username: str,
+    facebook_page_id: str,
+    page_access_token: str,
+    authorization: str = Header(None)
+):
+    """Store Instagram account connection"""
+    user = await get_current_user(authorization)
+    
+    db = get_database()
+    
+    # Store Instagram account info
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            f"instagram_accounts.{ig_account_id}": {
+                "username": username,
+                "facebook_page_id": facebook_page_id,
+                "page_access_token": page_access_token,
+                "connected_at": datetime.now(timezone.utc)
+            },
+            "instagram_connected": True,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Instagram account connected"}
+
 @app.get("/api/social-media")
 async def get_social_media_connections(authorization: str = Header(None)):
     """Get user's social media connections"""
@@ -415,7 +514,7 @@ async def get_social_media_connections(authorization: str = Header(None)):
         },
         {
             "platform": "Instagram",
-            "connected": False
+            "connected": user.get("instagram_connected", False)
         },
         {
             "platform": "YouTube",
