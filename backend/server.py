@@ -181,6 +181,73 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         print(f"Google auth error: {e}")
         raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
+# Onboarding endpoints
+class BusinessInfoRequest(BaseModel):
+    company_name: str
+    commercial_name: str = ""
+    address: str
+    country: str
+    region: str
+    postal_code: str
+    vat_number: str
+    contact_name: str
+    contact_email: str
+    contact_phone: str
+    billing_same_as_business: bool = True
+    billing_address: str = ""
+    billing_country: str = ""
+    billing_region: str = ""
+    billing_postal_code: str = ""
+
+class OnboardingProgressRequest(BaseModel):
+    current_step: int
+    completed_steps: dict = {}
+
+@app.post("/api/business-info")
+async def save_business_info(business_info: BusinessInfoRequest, authorization: str = Header(None)):
+    """Save business information"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Update user with business info
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "business_info": business_info.dict(),
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Business information saved"}
+
+@app.put("/api/onboarding/progress")
+async def update_onboarding_progress(progress: OnboardingProgressRequest, authorization: str = Header(None)):
+    """Update onboarding progress"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Update user onboarding progress
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "onboarding_step": progress.current_step,
+            "onboarding_completed_steps": progress.completed_steps,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Progress updated"}
+
+@app.get("/api/onboarding/progress")
+async def get_onboarding_progress(authorization: str = Header(None)):
+    """Get onboarding progress"""
+    user = await get_current_user(authorization)
+    
+    return {
+        "current_step": user.get("onboarding_step", 0),
+        "completed_steps": user.get("onboarding_completed_steps", {})
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
