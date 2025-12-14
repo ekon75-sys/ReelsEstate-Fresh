@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -8,6 +9,8 @@ import httpx
 import jwt
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
+import shutil
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
