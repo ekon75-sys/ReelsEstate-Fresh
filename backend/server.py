@@ -300,9 +300,37 @@ async def get_branding(authorization: str = Header(None)):
     
     return {
         "logo_url": user.get("logo_url", ""),
-        "primary_color": user.get("primary_color", ""),
-        "secondary_color": user.get("secondary_color", "")
+        "font_name": user.get("font_name", ""),
+        "font_alignment": user.get("font_alignment", ""),
+        "main_color": user.get("main_color", ""),
+        "currency": user.get("currency", "")
     }
+
+class BrandingRequest(BaseModel):
+    font_name: str = "Inter"
+    font_alignment: str = "left"
+    main_color: str = "#FF6B35"
+    currency: str = "€"
+
+@app.post("/api/branding")
+async def save_branding(branding: BrandingRequest, authorization: str = Header(None)):
+    """Save user branding preferences"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Update user with branding preferences
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "font_name": branding.font_name,
+            "font_alignment": branding.font_alignment,
+            "main_color": branding.main_color,
+            "currency": branding.currency,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Branding preferences saved"}
 
 if __name__ == "__main__":
     import uvicorn
