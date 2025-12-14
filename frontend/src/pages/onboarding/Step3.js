@@ -75,7 +75,23 @@ const OnboardingStep3 = () => {
     { label: 'Euro (€)', value: '€' },
     { label: 'US Dollar ($)', value: '$' },
     { label: 'British Pound (£)', value: '£' },
-    { label: 'Yen (¥)', value: '¥' }
+    { label: 'Japanese Yen (¥)', value: '¥' },
+    { label: 'Swiss Franc (CHF)', value: 'CHF' },
+    { label: 'Canadian Dollar (C$)', value: 'C$' },
+    { label: 'Australian Dollar (A$)', value: 'A$' },
+    { label: 'Chinese Yuan (¥)', value: 'CN¥' },
+    { label: 'Indian Rupee (₹)', value: '₹' },
+    { label: 'Singapore Dollar (S$)', value: 'S$' },
+    { label: 'Hong Kong Dollar (HK$)', value: 'HK$' },
+    { label: 'Swedish Krona (kr)', value: 'kr' },
+    { label: 'Norwegian Krone (kr)', value: 'NOK' },
+    { label: 'Danish Krone (kr)', value: 'DKK' },
+    { label: 'Polish Złoty (zł)', value: 'zł' },
+    { label: 'Mexican Peso (MX$)', value: 'MX$' },
+    { label: 'Brazilian Real (R$)', value: 'R$' },
+    { label: 'South African Rand (R)', value: 'ZAR' },
+    { label: 'UAE Dirham (د.إ)', value: 'AED' },
+    { label: 'Turkish Lira (₺)', value: '₺' }
   ];
 
   return (
