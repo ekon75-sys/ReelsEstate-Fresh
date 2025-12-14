@@ -348,7 +348,18 @@ async def get_facebook_auth_url(authorization: str = Header(None)):
     if not facebook_app_id:
         raise HTTPException(status_code=500, detail="Facebook App ID not configured")
     
-    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope=pages_manage_posts,pages_read_engagement&state={user['id']}"
+    # Include all necessary permissions for Instagram integration
+    scopes = [
+        "pages_show_list",           # Required to list Pages
+        "pages_manage_posts",        # Post to Pages
+        "pages_read_engagement",     # Read page engagement
+        "instagram_basic",           # Basic Instagram access
+        "instagram_content_publish", # Publish Instagram content
+        "business_management"        # Manage business assets
+    ]
+    scope_string = ",".join(scopes)
+    
+    auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope={scope_string}&state={user['id']}"
     
     return {"auth_url": auth_url, "app_id": facebook_app_id}
 
