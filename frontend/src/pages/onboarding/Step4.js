@@ -39,15 +39,18 @@ const OnboardingStep4 = () => {
   };
 
   const handleConnect = async (platform) => {
-    try {
-      await axios.post(`${API_URL}/social-media`, {
-        platform,
-        connected: true
-      });
-      setConnected(prev => ({ ...prev, [platform]: true }));
-      toast.success(`${platform} connected!`);
-    } catch (error) {
-      toast.error(`Failed to connect ${platform}`);
+    if (platform === 'Facebook') {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/facebook/auth-url`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        window.location.href = response.data.auth_url;
+      } catch (error) {
+        toast.error('Failed to initiate Facebook connection');
+      }
+    } else {
+      toast.info(`${platform} integration coming soon!`);
     }
   };
 
