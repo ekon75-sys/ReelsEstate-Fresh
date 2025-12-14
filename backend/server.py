@@ -18,129 +18,130 @@ app = FastAPI(title="ReelsEstate API")
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-        allow_origins=cors_origins,
-            allow_credentials=True,
-                allow_methods=["*"],
-                    allow_headers=["*"],
-                    )
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-                    # MongoDB connection (lazy)
-                    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-                    db_name = os.getenv("DB_NAME", "reelsestate")
+# MongoDB connection (lazy)
+mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+db_name = os.getenv("DB_NAME", "reelsestate")
 
-                    def get_database():
-                        client = AsyncIOMotorClient(mongo_url)
-                            return client[db_name]
+def get_database():
+    client = AsyncIOMotorClient(mongo_url)
+    return client[db_name]
 
-                            # Pydantic models
-                            class GoogleAuthRequest(BaseModel):
-                                code: str
+# Pydantic models
+class GoogleAuthRequest(BaseModel):
+    code: str
 
-                                class UserResponse(BaseModel):
-                                    id: str
-                                        email: str
-                                            name: str
-                                                plan: str = "free"
-                                                    plan_price: int = 0
-                                                        is_admin: bool = False
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    plan: str = "free"
+    plan_price: int = 0
+    is_admin: bool = False
 
-                                                        # JWT Secret
-                                                        JWT_SECRET = os.getenv("JWT_SECRET", "fallback-secret-key")
+# JWT Secret
+JWT_SECRET = os.getenv("JWT_SECRET", "fallback-secret-key")
 
-                                                        def create_access_token(user_id: str) -> str:
-                                                            payload = {
-                                                                    "user_id": user_id,
-                                                                            "exp": datetime.now(timezone.utc) + timedelta(days=30)
-                                                                                }
-                                                                                    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+def create_access_token(user_id: str) -> str:
+    payload = {
+        "user_id": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
 
-                                                                                    # Health check endpoints
-                                                                                    @app.get("/")
-                                                                                    async def root():
-                                                                                        return {"status": "ok", "service": "ReelsEstate API"}
+# Health check endpoints
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "ReelsEstate API"}
 
-                                                                                        @app.get("/health")
-                                                                                        async def health():
-                                                                                            return {"status": "ok", "service": "ReelsEstate API"}
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "ReelsEstate API"}
 
-                                                                                            @app.get("/api/health")
-                                                                                            async def api_health():
-                                                                                                return {"status": "ok", "service": "ReelsEstate API"}
+@app.get("/api/health")
+async def api_health():
+    return {"status": "ok", "service": "ReelsEstate API"}
 
-                                                                                                # Test MongoDB connection
-                                                                                                @app.get("/api/test-db")
-                                                                                                async def test_db():
-                                                                                                    try:
-                                                                                                            db = get_database()
-                                                                                                                    await db.test.insert_one({"test": "connection"})
-                                                                                                                            await db.test.delete_one({"test": "connection"})
-                                                                                                                                    return {"status": "ok", "database": "connected"}
-                                                                                                                                        except Exception as e:
-                                                                                                                                                return {"status": "error", "database": "failed", "error": str(e)}
+# Test MongoDB connection
+@app.get("/api/test-db")
+async def test_db():
+    try:
+        db = get_database()
+        await db.test.insert_one({"test": "connection"})
+        await db.test.delete_one({"test": "connection"})
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": "failed", "error": str(e)}
 
-                                                                                                                                                # Google OAuth endpoints
-                                                                                                                                                @app.post("/api/auth/google/callback")
-                                                                                                                                                async def google_oauth_callback(auth_data: GoogleAuthRequest):
-                                                                                                                                                    """Handle Google OAuth callback"""
-                                                                                                                                                        try:
-                                                                                                                                                                # Exchange code for token
-                                                                                                                                                                        token_url = "https://oauth2.googleapis.com/token"
-                                                                                                                                                                                token_data = {
-                                                                                                                                                                                            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-                                                                                                                                                                                                        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
-                                                                                                                                                                                                                    "code": auth_data.code,
-                                                                                                                                                                                                                                "grant_type": "authorization_code",
-                                                                                                                                                                                                                                            "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI")
-                                                                                                                                                                                                                                                    }
-                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                    async with httpx.AsyncClient() as client:
-                                                                                                                                                                                                                                                                                token_response = await client.post(token_url, data=token_data)
-                                                                                                                                                                                                                                                                                            token_json = token_response.json()
-                                                                                                                                                                                                                                                                                                        
-                                                                                                                                                                                                                                                                                                                    if "access_token" not in token_json:
-                                                                                                                                                                                                                                                                                                                                    raise HTTPException(status_code=400, detail="Failed to get access token")
-                                                                                                                                                                                                                                                                                                                                                
-                                                                                                                                                                                                                                                                                                                                                            # Get user info
-                                                                                                                                                                                                                                                                                                                                                                        user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token_json['access_token']}"
-                                                                                                                                                                                                                                                                                                                                                                                    user_response = await client.get(user_info_url)
-                                                                                                                                                                                                                                                                                                                                                                                                user_info = user_response.json()
-                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                        # Get or create user in database
-                                                                                                                                                                                                                                                                                                                                                                                                                                    db = get_database()
-                                                                                                                                                                                                                                                                                                                                                                                                                                                user = await db.users.find_one({"email": user_info['email']}, {"_id": 0})
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        if not user:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        user = {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "id": str(ObjectId()),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                "email": user_info['email'],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "name": user_info['name'],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        "google_id": user_info['id'],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "plan": "free",
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                "plan_price": 0,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "created_at": datetime.now(timezone.utc),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        "is_admin": (user_info['email'] == "ekon75@hotmail.com")
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        await db.users.insert_one(user)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                # Create JWT token
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            token = create_access_token(user["id"])
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    return {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "token": token,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "user": UserResponse(
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        id=user["id"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            email=user["email"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                name=user["name"],
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    plan=user.get("plan", "free"),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        plan_price=user.get("plan_price", 0),
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            is_admin=user.get("is_admin", False)
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            )
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        except Exception as e:
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                print(f"Google auth error: {e}")
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
+# Google OAuth endpoints
+@app.post("/api/auth/google/callback")
+async def google_oauth_callback(auth_data: GoogleAuthRequest):
+    """Handle Google OAuth callback"""
+    try:
+        # Exchange code for token
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "code": auth_data.code,
+            "grant_type": "authorization_code",
+            "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI")
+        }
+        
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(token_url, data=token_data)
+            token_json = token_response.json()
+            
+            if "access_token" not in token_json:
+                raise HTTPException(status_code=400, detail="Failed to get access token")
+            
+            # Get user info
+            user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token_json['access_token']}"
+            user_response = await client.get(user_info_url)
+            user_info = user_response.json()
+            
+            # Get or create user in database
+            db = get_database()
+            user = await db.users.find_one({"email": user_info['email']}, {"_id": 0})
+            
+            if not user:
+                user = {
+                    "id": str(ObjectId()),
+                    "email": user_info['email'],
+                    "name": user_info['name'],
+                    "google_id": user_info['id'],
+                    "plan": "free",
+                    "plan_price": 0,
+                    "created_at": datetime.now(timezone.utc),
+                    "is_admin": (user_info['email'] == "ekon75@hotmail.com"),
+                    "onboarding_step": 0
+                }
+                await db.users.insert_one(user)
+            
+            # Create JWT token
+            token = create_access_token(user["id"])
+            
+            return {
+                "token": token,
+                "user": UserResponse(
+                    id=user["id"],
+                    email=user["email"],
+                    name=user["name"],
+                    plan=user.get("plan", "free"),
+                    plan_price=user.get("plan_price", 0),
+                    is_admin=user.get("is_admin", False)
+                )
+            }
+            
+    except Exception as e:
+        print(f"Google auth error: {e}")
+        raise HTTPException(status_code=400, detail=f"Google authentication failed: {str(e)}")
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        if __name__ == "__main__":
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            import uvicorn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
