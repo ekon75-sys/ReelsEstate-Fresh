@@ -355,7 +355,6 @@ async def get_facebook_auth_url(authorization: str = Header(None)):
         "pages_manage_posts",           # Post to Pages (also works for Instagram)
         "pages_read_engagement",        # Read page engagement
         "instagram_manage_comments",    # Manage Instagram comments
-        "instagram_manage_insights",    # Read Instagram insights
         "business_management"           # Manage business assets
     ]
     scope_string = ",".join(scopes)
