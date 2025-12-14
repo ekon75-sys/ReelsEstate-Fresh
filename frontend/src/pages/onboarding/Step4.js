@@ -104,6 +104,25 @@ const OnboardingStep4 = () => {
     }
   };
 
+  const handleDisconnect = async (platform) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_URL}/social-media/disconnect`, {
+        platform
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      setConnected(prev => ({ ...prev, [platform]: false }));
+      toast.success(`${platform} disconnected successfully!`);
+      
+      // Reload connections
+      loadSocialMedia();
+    } catch (error) {
+      toast.error(`Failed to disconnect ${platform}`);
+    }
+  };
+
   const handleContinue = async () => {
     setLoading(true);
     try {
