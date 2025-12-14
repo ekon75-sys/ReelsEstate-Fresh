@@ -341,9 +341,16 @@ async def get_facebook_auth_url(authorization: str = Header(None)):
     facebook_app_id = os.getenv("FACEBOOK_APP_ID")
     redirect_uri = "https://reels-estate.app/auth/facebook/callback"
     
+    # Debug log
+    print(f"Facebook App ID: {facebook_app_id}")
+    print(f"Redirect URI: {redirect_uri}")
+    
+    if not facebook_app_id:
+        raise HTTPException(status_code=500, detail="Facebook App ID not configured")
+    
     auth_url = f"https://www.facebook.com/v20.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope=pages_manage_posts,pages_read_engagement&state={user['id']}"
     
-    return {"auth_url": auth_url}
+    return {"auth_url": auth_url, "app_id": facebook_app_id}
 
 @app.post("/api/facebook/callback")
 async def facebook_callback(code: str, state: str):
