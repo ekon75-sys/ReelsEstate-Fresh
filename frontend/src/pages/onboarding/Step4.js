@@ -49,6 +49,56 @@ const OnboardingStep4 = () => {
       } catch (error) {
         toast.error('Failed to initiate Facebook connection');
       }
+    } else if (platform === 'Instagram') {
+      try {
+        const token = localStorage.getItem('token');
+        
+        // Fetch Instagram accounts linked to Facebook
+        const response = await axios.get(`${API_URL}/instagram/accounts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        const accounts = response.data.instagram_accounts;
+        
+        if (accounts.length === 0) {
+          toast.error('No Instagram Business accounts found. Make sure your Instagram account is linked to a Facebook Page.');
+          return;
+        }
+        
+        // If only one account, connect it directly
+        if (accounts.length === 1) {
+          const account = accounts[0];
+          await axios.post(`${API_URL}/instagram/connect`, {
+            ig_account_id: account.ig_account_id,
+            username: account.username,
+            facebook_page_id: account.facebook_page_id,
+            page_access_token: account.page_access_token
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          setConnected(prev => ({ ...prev, Instagram: true }));
+          toast.success(`Connected @${account.username} successfully!`);
+        } else {
+          // Multiple accounts - show selection dialog
+          toast.info('Multiple Instagram accounts found. Connecting first account...');
+          const account = accounts[0];
+          await axios.post(`${API_URL}/instagram/connect`, {
+            ig_account_id: account.ig_account_id,
+            username: account.username,
+            facebook_page_id: account.facebook_page_id,
+            page_access_token: account.page_access_token
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          setConnected(prev => ({ ...prev, Instagram: true }));
+          toast.success(`Connected @${account.username} successfully!`);
+        }
+      } catch (error) {
+        console.error('Instagram connection error:', error);
+        toast.error(error.response?.data?.detail || 'Failed to connect Instagram. Make sure Facebook is connected first.');
+      }
     } else {
       toast.info(`${platform} integration coming soon!`);
     }
