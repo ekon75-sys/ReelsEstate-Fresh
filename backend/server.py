@@ -1017,6 +1017,46 @@ async def linkedin_callback(code: str, state: str):
         print(f"LinkedIn callback error: {e}")
         raise HTTPException(status_code=400, detail=f"LinkedIn connection failed: {str(e)}")
 
+@app.get("/api/auth/linkedin/pages")
+async def get_linkedin_pages(authorization: str = Header(None)):
+    """Get LinkedIn pages for user (personal profile and organization pages)"""
+    user = await get_current_user(authorization)
+    
+    pages = []
+    
+    # Add personal profile option
+    pages.append({
+        "urn": f"urn:li:person:{user.get('linkedin_id', '')}",
+        "name": user.get("name", "Personal Profile"),
+        "type": "personal"
+    })
+    
+    # In production, fetch organization pages from LinkedIn API
+    # For now, return only personal profile
+    
+    return {
+        "pages": pages,
+        "selected": user.get("linkedin_selected_page", pages[0]["urn"] if pages else None)
+    }
+
+@app.post("/api/auth/linkedin/select-page")
+async def select_linkedin_page(request: dict, authorization: str = Header(None)):
+    """Select which LinkedIn page/profile to post to"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    page_urn = request.get("page_urn")
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "linkedin_selected_page": page_urn,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "LinkedIn page selected"}
+
 # Agent management endpoints
 @app.get("/api/agents")
 async def get_agents(authorization: str = Header(None)):
