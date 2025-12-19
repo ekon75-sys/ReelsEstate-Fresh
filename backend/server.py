@@ -46,6 +46,7 @@ def get_database():
 # Pydantic models
 class GoogleAuthRequest(BaseModel):
     code: str
+    redirect_uri: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
