@@ -533,7 +533,7 @@ async def get_social_media_connections(authorization: str = Header(None)):
         },
         {
             "platform": "TikTok",
-            "connected": False
+            "connected": user.get("tiktok_connected", False)
         },
         {
             "platform": "LinkedIn",
