@@ -109,6 +109,16 @@ const OnboardingStep4 = () => {
       } catch (error) {
         toast.error('Kan YouTube verbinding niet starten');
       }
+    } else if (platform === 'TikTok') {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/tiktok/auth-url`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        window.location.href = response.data.auth_url;
+      } catch (error) {
+        toast.error('Kan TikTok verbinding niet starten');
+      }
     } else {
       toast.info(`${platform} integratie komt binnenkort!`);
     }
