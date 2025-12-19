@@ -591,6 +591,129 @@ async def disconnect_social_media(request: DisconnectRequest, authorization: str
     
     return {"status": "success", "message": f"{platform} disconnected"}
 
+# Social Media Status Endpoints
+@app.get("/api/auth/facebook/status")
+async def get_facebook_status(authorization: str = Header(None)):
+    """Check Facebook connection status"""
+    user = await get_current_user(authorization)
+    return {"connected": user.get("facebook_connected", False)}
+
+@app.get("/api/auth/instagram/status")
+async def get_instagram_status(authorization: str = Header(None)):
+    """Check Instagram connection status"""
+    user = await get_current_user(authorization)
+    return {"connected": user.get("instagram_connected", False)}
+
+@app.get("/api/auth/youtube/status")
+async def get_youtube_status(authorization: str = Header(None)):
+    """Check YouTube connection status"""
+    user = await get_current_user(authorization)
+    return {"connected": user.get("youtube_connected", False)}
+
+@app.get("/api/auth/linkedin/status")
+async def get_linkedin_status(authorization: str = Header(None)):
+    """Check LinkedIn connection status"""
+    user = await get_current_user(authorization)
+    return {"connected": user.get("linkedin_connected", False)}
+
+@app.get("/api/auth/tiktok/status")
+async def get_tiktok_status(authorization: str = Header(None)):
+    """Check TikTok connection status"""
+    user = await get_current_user(authorization)
+    return {"connected": user.get("tiktok_connected", False)}
+
+@app.delete("/api/auth/{platform}/disconnect")
+async def disconnect_platform(platform: str, authorization: str = Header(None)):
+    """Disconnect a social media platform"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    update_fields = {"updated_at": datetime.now(timezone.utc)}
+    
+    if platform == "facebook":
+        update_fields["facebook_connected"] = False
+        update_fields["facebook_access_token"] = None
+        update_fields["facebook_pages"] = []
+    elif platform == "instagram":
+        update_fields["instagram_connected"] = False
+        update_fields["instagram_accounts"] = {}
+    elif platform == "youtube":
+        update_fields["youtube_connected"] = False
+        update_fields["youtube_access_token"] = None
+        update_fields["youtube_refresh_token"] = None
+        update_fields["youtube_channels"] = []
+    elif platform == "tiktok":
+        update_fields["tiktok_connected"] = False
+        update_fields["tiktok_access_token"] = None
+        update_fields["tiktok_refresh_token"] = None
+        update_fields["tiktok_user"] = {}
+    elif platform == "linkedin":
+        update_fields["linkedin_connected"] = False
+        update_fields["linkedin_access_token"] = None
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown platform: {platform}")
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": update_fields}
+    )
+    
+    return {"status": "success", "message": f"{platform} disconnected"}
+
+@app.get("/api/auth/{platform}/authorize")
+async def get_platform_auth_url(platform: str, authorization: str = Header(None)):
+    """Get OAuth authorization URL for a platform"""
+    user = await get_current_user(authorization)
+    
+    if platform == "facebook":
+        facebook_app_id = os.getenv("FACEBOOK_APP_ID")
+        redirect_uri = "https://reels-estate.app/auth/facebook/callback"
+        if not facebook_app_id:
+            raise HTTPException(status_code=500, detail="Facebook App ID not configured")
+        scopes = "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,business_management"
+        auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope={scopes}&response_type=code"
+        return {"auth_url": auth_url}
+    
+    elif platform == "youtube":
+        google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+        redirect_uri = "https://reels-estate.app/auth/youtube/callback"
+        if not google_client_id:
+            raise HTTPException(status_code=500, detail="Google Client ID not configured")
+        scopes = "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload"
+        auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={google_client_id}&redirect_uri={redirect_uri}&scope={scopes}&response_type=code&access_type=offline&prompt=consent"
+        return {"auth_url": auth_url}
+    
+    elif platform == "linkedin":
+        linkedin_client_id = os.getenv("LINKEDIN_CLIENT_ID")
+        redirect_uri = "https://reels-estate.app/auth/linkedin/callback"
+        if not linkedin_client_id:
+            raise HTTPException(status_code=500, detail="LinkedIn Client ID not configured")
+        scopes = "openid profile email w_member_social"
+        auth_url = f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={linkedin_client_id}&redirect_uri={redirect_uri}&scope={scopes}"
+        return {"auth_url": auth_url}
+    
+    elif platform == "tiktok":
+        tiktok_client_key = os.getenv("TIKTOK_CLIENT_KEY")
+        redirect_uri = "https://reels-estate.app/auth/tiktok/callback"
+        if not tiktok_client_key:
+            raise HTTPException(status_code=500, detail="TikTok Client Key not configured")
+        scopes = "user.info.basic,video.publish"
+        auth_url = f"https://www.tiktok.com/v2/auth/authorize/?client_key={tiktok_client_key}&redirect_uri={redirect_uri}&scope={scopes}&response_type=code"
+        return {"auth_url": auth_url}
+    
+    elif platform == "instagram":
+        # Instagram uses Facebook OAuth
+        facebook_app_id = os.getenv("FACEBOOK_APP_ID")
+        redirect_uri = "https://reels-estate.app/auth/facebook/callback"
+        if not facebook_app_id:
+            raise HTTPException(status_code=500, detail="Facebook App ID not configured")
+        scopes = "pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish,business_management"
+        auth_url = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={facebook_app_id}&redirect_uri={redirect_uri}&scope={scopes}&response_type=code"
+        return {"auth_url": auth_url}
+    
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown platform: {platform}")
+
 # YouTube OAuth endpoints
 @app.get("/api/youtube/auth-url")
 async def get_youtube_auth_url(authorization: str = Header(None)):
