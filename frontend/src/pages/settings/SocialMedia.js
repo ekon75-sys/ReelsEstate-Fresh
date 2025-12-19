@@ -13,16 +13,14 @@ const SocialMediaSettings = () => {
     instagram: false,
     facebook: false,
     linkedin: false,
-    tiktok: false,
-    twitter: false
+    tiktok: false
   });
   const [connecting, setConnecting] = useState({
     youtube: false,
     instagram: false,
     facebook: false,
     linkedin: false,
-    tiktok: false,
-    twitter: false
+    tiktok: false
   });
   const [loading, setLoading] = useState(true);
   const [disconnectDialog, setDisconnectDialog] = useState({ show: false, platform: null });
