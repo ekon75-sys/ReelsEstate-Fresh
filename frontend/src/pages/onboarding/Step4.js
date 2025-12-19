@@ -119,6 +119,16 @@ const OnboardingStep4 = () => {
       } catch (error) {
         toast.error('Kan TikTok verbinding niet starten');
       }
+    } else if (platform === 'LinkedIn') {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/linkedin/auth-url`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        window.location.href = response.data.auth_url;
+      } catch (error) {
+        toast.error('Kan LinkedIn verbinding niet starten');
+      }
     } else {
       toast.info(`${platform} integratie komt binnenkort!`);
     }
