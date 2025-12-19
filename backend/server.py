@@ -575,6 +575,100 @@ async def disconnect_social_media(request: DisconnectRequest, authorization: str
     
     return {"status": "success", "message": f"{platform} disconnected"}
 
+# YouTube OAuth endpoints
+@app.get("/api/youtube/auth-url")
+async def get_youtube_auth_url(authorization: str = Header(None)):
+    """Generate YouTube OAuth URL"""
+    user = await get_current_user(authorization)
+    
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+    redirect_uri = "https://reels-estate.app/auth/youtube/callback"
+    
+    if not google_client_id:
+        raise HTTPException(status_code=500, detail="Google Client ID not configured")
+    
+    # YouTube requires specific scopes
+    scopes = [
+        "https://www.googleapis.com/auth/youtube.readonly",
+        "https://www.googleapis.com/auth/youtube.upload",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+    ]
+    scope_string = " ".join(scopes)
+    
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={google_client_id}&redirect_uri={redirect_uri}&scope={scope_string}&response_type=code&access_type=offline&state={user['id']}"
+    
+    return {"auth_url": auth_url}
+
+@app.post("/api/youtube/callback")
+async def youtube_callback(code: str, state: str):
+    """Handle YouTube OAuth callback"""
+    try:
+        google_client_id = os.getenv("GOOGLE_CLIENT_ID")
+        google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        redirect_uri = "https://reels-estate.app/auth/youtube/callback"
+        
+        # Exchange code for access token
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": google_client_id,
+                    "client_secret": google_client_secret,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                    "redirect_uri": redirect_uri
+                }
+            )
+            token_response.raise_for_status()
+            token_data = token_response.json()
+            
+            access_token = token_data["access_token"]
+            refresh_token = token_data.get("refresh_token")
+            
+            # Get YouTube channels
+            channels_response = await client.get(
+                "https://www.googleapis.com/youtube/v3/channels",
+                params={
+                    "part": "snippet,statistics",
+                    "mine": "true",
+                    "access_token": access_token
+                }
+            )
+            channels_response.raise_for_status()
+            channels_data = channels_response.json()
+            
+            # Store in database
+            db = get_database()
+            user_id = state
+            
+            youtube_channels = []
+            for channel in channels_data.get("items", []):
+                youtube_channels.append({
+                    "channel_id": channel["id"],
+                    "title": channel["snippet"]["title"],
+                    "description": channel["snippet"]["description"],
+                    "thumbnail": channel["snippet"]["thumbnails"]["default"]["url"],
+                    "subscriber_count": channel["statistics"].get("subscriberCount", "0")
+                })
+            
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {
+                    "youtube_access_token": access_token,
+                    "youtube_refresh_token": refresh_token,
+                    "youtube_channels": youtube_channels,
+                    "youtube_connected": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            
+            return {"status": "success", "message": "YouTube connected successfully", "channels": youtube_channels}
+            
+    except Exception as e:
+        print(f"YouTube callback error: {e}")
+        raise HTTPException(status_code=400, detail=f"YouTube connection failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
