@@ -52,6 +52,7 @@ function App() {
           <Route path="/auth/google/callback" element={<GoogleCallback />} />
           <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
           <Route path="/auth/youtube/callback" element={<YouTubeCallback />} />
+          <Route path="/auth/tiktok/callback" element={<TikTokCallback />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/data-deletion" element={<DataDeletion />} />
