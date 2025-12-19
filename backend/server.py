@@ -90,8 +90,6 @@ async def test_db():
         return {"status": "error", "database": "failed", "error": str(e)}
 
 # Auth middleware to get current user from JWT
-from fastapi import Header
-
 async def get_current_user(authorization: str = Header(None)):
     """Get current user from JWT token"""
     if not authorization or not authorization.startswith("Bearer "):
