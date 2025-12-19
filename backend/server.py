@@ -1126,7 +1126,7 @@ async def delete_agent(agent_id: str, authorization: str = Header(None)):
 
 @app.post("/api/upload/agent-photo")
 async def upload_agent_photo(file: UploadFile = File(...), authorization: str = Header(None)):
-    """Upload agent photo"""
+    """Upload agent photo - stores as base64 in database"""
     user = await get_current_user(authorization)
     
     # Validate file type
@@ -1134,20 +1134,13 @@ async def upload_agent_photo(file: UploadFile = File(...), authorization: str = 
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only PNG and JPG are allowed")
     
-    # Create user-specific directory
-    user_dir = UPLOAD_DIR / user["id"] / "agents"
-    user_dir.mkdir(parents=True, exist_ok=True)
+    # Read file and convert to base64
+    import base64
+    file_content = await file.read()
+    base64_data = base64.b64encode(file_content).decode('utf-8')
     
-    # Save file
-    file_extension = file.filename.split('.')[-1]
-    file_name = f"{str(ObjectId())}.{file_extension}"
-    file_path = user_dir / file_name
-    
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Generate URL
-    photo_url = f"/uploads/{user['id']}/agents/{file_name}"
+    # Create data URL
+    photo_url = f"data:{file.content_type};base64,{base64_data}"
     
     return {"status": "success", "photo_url": photo_url}
 
