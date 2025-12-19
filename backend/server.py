@@ -214,6 +214,14 @@ class OnboardingProgressRequest(BaseModel):
     current_step: int
     completed_steps: dict = {}
 
+@app.get("/api/business-info")
+async def get_business_info(authorization: str = Header(None)):
+    """Get business information"""
+    user = await get_current_user(authorization)
+    
+    business_info = user.get("business_info", {})
+    return business_info
+
 @app.post("/api/business-info")
 async def save_business_info(business_info: BusinessInfoRequest, authorization: str = Header(None)):
     """Save business information"""
