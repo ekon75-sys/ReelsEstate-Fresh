@@ -144,10 +144,8 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         # Exchange code for token
         token_url = "https://oauth2.googleapis.com/token"
         
-        # HARDCODED redirect_uri to ensure correct value
-        redirect_uri = "https://reels-estate.app/auth/google/callback"
-        
-        print(f"[DEBUG] Using hardcoded redirect_uri: {redirect_uri}")
+        # Use redirect_uri from environment variable
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "https://reels-estate.app/auth/google/callback")
         
         token_data = {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -160,9 +158,6 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         async with httpx.AsyncClient() as client:
             token_response = await client.post(token_url, data=token_data)
             token_json = token_response.json()
-            
-            print(f"[DEBUG] Google token response status: {token_response.status_code}")
-            print(f"[DEBUG] Google token response: {token_json}")
             
             if "access_token" not in token_json:
                 error_detail = token_json.get("error_description", token_json.get("error", "Failed to get access token"))
