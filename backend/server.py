@@ -79,6 +79,15 @@ async def health():
 async def api_health():
     return {"status": "ok", "service": "ReelsEstate API"}
 
+@app.get("/api/debug/oauth-config")
+async def debug_oauth_config():
+    """Debug endpoint to check OAuth configuration"""
+    return {
+        "google_client_id": os.getenv("GOOGLE_CLIENT_ID", "NOT SET")[:20] + "..." if os.getenv("GOOGLE_CLIENT_ID") else "NOT SET",
+        "google_redirect_uri_env": os.getenv("GOOGLE_REDIRECT_URI", "NOT SET"),
+        "expected_redirect_uri": "https://reels-estate.app/auth/google/callback"
+    }
+
 # Test MongoDB connection
 @app.get("/api/test-db")
 async def test_db():
