@@ -38,7 +38,10 @@ const BrandingSettings = () => {
       if (response.data) {
         setFormData(response.data);
         if (response.data.logo_url) {
-          const logoUrl = response.data.logo_url.startsWith('http') ? response.data.logo_url : `${process.env.REACT_APP_BACKEND_URL}${response.data.logo_url}`;
+          // Support both data URLs (base64) and regular URLs
+          const logoUrl = response.data.logo_url.startsWith('data:') || response.data.logo_url.startsWith('http') 
+            ? response.data.logo_url 
+            : `${process.env.REACT_APP_BACKEND_URL}${response.data.logo_url}`;
           setLogoPreview(logoUrl);
         }
       }
