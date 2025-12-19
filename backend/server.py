@@ -160,8 +160,16 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
             token_json = token_response.json()
             
             if "access_token" not in token_json:
-                error_detail = token_json.get("error_description", token_json.get("error", "Failed to get access token"))
-                raise HTTPException(status_code=400, detail=f"Google OAuth error: {error_detail}")
+                # Return FULL error from Google so we can debug
+                raise HTTPException(
+                    status_code=400, 
+                    detail={
+                        "error": "Google token exchange failed",
+                        "google_response": token_json,
+                        "redirect_uri_used": redirect_uri,
+                        "client_id_prefix": os.getenv("GOOGLE_CLIENT_ID", "")[:20] + "..."
+                    }
+                )
             
             # Get user info
             user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token_json['access_token']}"
