@@ -1047,6 +1047,47 @@ async def add_agent(agent: dict, authorization: str = Header(None)):
     
     return {"status": "success", "message": "Agent added"}
 
+@app.put("/api/agents/{agent_id}")
+async def update_agent(agent_id: str, agent: dict, authorization: str = Header(None)):
+    """Update an existing agent"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Verify agent belongs to user
+    existing_agent = await db.agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not existing_agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    update_data = {
+        "name": agent.get("name"),
+        "phone": agent.get("phone"),
+        "email": agent.get("email"),
+        "photo_url": agent.get("photo_url", ""),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    await db.agents.update_one(
+        {"id": agent_id, "user_id": user["id"]},
+        {"$set": update_data}
+    )
+    
+    return {"status": "success", "message": "Agent updated"}
+
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: str, authorization: str = Header(None)):
+    """Delete an agent"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Verify agent belongs to user
+    existing_agent = await db.agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not existing_agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    await db.agents.delete_one({"id": agent_id, "user_id": user["id"]})
+    
+    return {"status": "success", "message": "Agent deleted"}
+
 @app.post("/api/upload/agent-photo")
 async def upload_agent_photo(file: UploadFile = File(...), authorization: str = Header(None)):
     """Upload agent photo"""
