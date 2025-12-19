@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /privacy-policy
+Allow: /terms-of-service
+Allow: /data-deletion
+
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /auth
+
+Sitemap: https://reels-estate.app/sitemap.xml
