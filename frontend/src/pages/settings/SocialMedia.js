@@ -33,7 +33,7 @@ const SocialMediaSettings = () => {
   const checkAllConnections = async () => {
     try {
       const token = localStorage.getItem('token');
-      const [youtube, instagram, facebook, linkedin, tiktok, twitter] = await Promise.all([
+      const [youtube, instagram, facebook, linkedin, tiktok] = await Promise.all([
         axios.get(`${API_URL}/auth/youtube/status`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -48,9 +48,6 @@ const SocialMediaSettings = () => {
         }),
         axios.get(`${API_URL}/auth/tiktok/status`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: { connected: false } })),
-        axios.get(`${API_URL}/auth/twitter/status`, {
-          headers: { Authorization: `Bearer ${token}` }
         }).catch(() => ({ data: { connected: false } }))
       ]);
 
@@ -59,8 +56,7 @@ const SocialMediaSettings = () => {
         instagram: instagram.data.connected,
         facebook: facebook.data.connected,
         linkedin: linkedin.data.connected,
-        tiktok: tiktok.data.connected,
-        twitter: twitter.data.connected
+        tiktok: tiktok.data.connected
       });
     } catch (error) {
       console.error('Failed to check connections:', error);
