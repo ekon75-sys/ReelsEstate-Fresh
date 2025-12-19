@@ -887,6 +887,63 @@ async def linkedin_callback(code: str, state: str):
         print(f"LinkedIn callback error: {e}")
         raise HTTPException(status_code=400, detail=f"LinkedIn connection failed: {str(e)}")
 
+# Agent management endpoints
+@app.get("/api/agents")
+async def get_agents(authorization: str = Header(None)):
+    """Get all agents for the user"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    agents = await db.agents.find({"user_id": user["id"]}, {"_id": 0}).to_list(1000)
+    return agents
+
+@app.post("/api/agents")
+async def add_agent(agent: dict, authorization: str = Header(None)):
+    """Add a new agent"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    agent_data = {
+        "id": str(ObjectId()),
+        "user_id": user["id"],
+        "name": agent.get("name"),
+        "phone": agent.get("phone"),
+        "email": agent.get("email"),
+        "photo_url": agent.get("photo_url", ""),
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    await db.agents.insert_one(agent_data)
+    
+    return {"status": "success", "message": "Agent added"}
+
+@app.post("/api/upload/agent-photo")
+async def upload_agent_photo(file: UploadFile = File(...), authorization: str = Header(None)):
+    """Upload agent photo"""
+    user = await get_current_user(authorization)
+    
+    # Validate file type
+    allowed_types = ["image/png", "image/jpeg", "image/jpg"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only PNG and JPG are allowed")
+    
+    # Create user-specific directory
+    user_dir = UPLOAD_DIR / user["id"] / "agents"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save file
+    file_extension = file.filename.split('.')[-1]
+    file_name = f"{str(ObjectId())}.{file_extension}"
+    file_path = user_dir / file_name
+    
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Generate URL
+    photo_url = f"/uploads/{user['id']}/agents/{file_name}"
+    
+    return {"status": "success", "photo_url": photo_url}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
