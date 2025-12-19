@@ -9,6 +9,11 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const BrandingSettings = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,7 +32,9 @@ const BrandingSettings = () => {
 
   const loadBranding = async () => {
     try {
-      const response = await axios.get(`${API_URL}/branding`);
+      const response = await axios.get(`${API_URL}/branding`, {
+        headers: getAuthHeaders()
+      });
       if (response.data) {
         setFormData(response.data);
         if (response.data.logo_url) {
@@ -61,7 +68,9 @@ const BrandingSettings = () => {
       if (logoFile) {
         const logoFormData = new FormData();
         logoFormData.append('file', logoFile);
-        await axios.post(`${API_URL}/upload/logo`, logoFormData);
+        await axios.post(`${API_URL}/upload/logo`, logoFormData, {
+          headers: getAuthHeaders()
+        });
       }
 
       await axios.post(`${API_URL}/branding`, {
@@ -69,6 +78,8 @@ const BrandingSettings = () => {
         font_alignment: formData.font_alignment,
         main_color: formData.main_color,
         currency: formData.currency
+      }, {
+        headers: getAuthHeaders()
       });
 
       toast.success('Branding updated!');

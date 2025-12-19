@@ -9,6 +9,11 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const BusinessSettings = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,7 +36,9 @@ const BusinessSettings = () => {
 
   const loadBusinessInfo = async () => {
     try {
-      const response = await axios.get(`${API_URL}/business-info`);
+      const response = await axios.get(`${API_URL}/business-info`, {
+        headers: getAuthHeaders()
+      });
       if (response.data && response.data.company_name) {
         setFormData(response.data);
       }
@@ -49,7 +56,9 @@ const BusinessSettings = () => {
     setLoading(true);
 
     try {
-      await axios.post(`${API_URL}/business-info`, formData);
+      await axios.post(`${API_URL}/business-info`, formData, {
+        headers: getAuthHeaders()
+      });
       toast.success('Business information updated!');
     } catch (error) {
       toast.error('Failed to update information');
