@@ -944,6 +944,55 @@ async def upload_agent_photo(file: UploadFile = File(...), authorization: str = 
     
     return {"status": "success", "photo_url": photo_url}
 
+# Subscription management endpoints
+class SubscriptionRequest(BaseModel):
+    plan_name: str
+    plan_price: float
+
+@app.post("/api/subscription")
+async def activate_subscription(subscription: SubscriptionRequest, authorization: str = Header(None)):
+    """Activate a subscription plan"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # For now, this is a mock implementation
+    # In production, integrate with Stripe/payment gateway
+    
+    # Calculate trial end date (3 days from now)
+    trial_end = datetime.now(timezone.utc) + timedelta(days=3)
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "plan": subscription.plan_name,
+            "plan_price": subscription.plan_price,
+            "trial_active": True,
+            "trial_end_date": trial_end,
+            "subscription_status": "trial",
+            "subscription_started_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {
+        "status": "success",
+        "message": f"{subscription.plan_name} plan activated with 3-day trial",
+        "trial_end_date": trial_end.isoformat()
+    }
+
+@app.get("/api/subscription")
+async def get_subscription(authorization: str = Header(None)):
+    """Get user's current subscription"""
+    user = await get_current_user(authorization)
+    
+    return {
+        "plan": user.get("plan", "free"),
+        "plan_price": user.get("plan_price", 0),
+        "trial_active": user.get("trial_active", False),
+        "trial_end_date": user.get("trial_end_date"),
+        "subscription_status": user.get("subscription_status", "inactive")
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
