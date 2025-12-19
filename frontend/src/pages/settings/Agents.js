@@ -147,7 +147,7 @@ const AgentsSettings = () => {
                 <div className="flex items-center gap-4">
                   {agent.photo_url ? (
                     <img 
-                      src={agent.photo_url.startsWith('http') ? agent.photo_url : `${process.env.REACT_APP_BACKEND_URL}${agent.photo_url}`} 
+                      src={agent.photo_url.startsWith('data:') || agent.photo_url.startsWith('http') ? agent.photo_url : `${process.env.REACT_APP_BACKEND_URL}${agent.photo_url}`} 
                       alt={agent.name}
                       className="w-12 h-12 rounded-full object-cover"
                       onError={(e) => {
