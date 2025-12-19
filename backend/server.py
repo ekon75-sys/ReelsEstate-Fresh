@@ -147,6 +147,10 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         # Use redirect_uri from request if provided, otherwise fallback to env
         redirect_uri = auth_data.redirect_uri or os.getenv("GOOGLE_REDIRECT_URI")
         
+        print(f"[DEBUG] Google OAuth callback")
+        print(f"[DEBUG] redirect_uri from request: {auth_data.redirect_uri}")
+        print(f"[DEBUG] redirect_uri being used: {redirect_uri}")
+        
         token_data = {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
             "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
@@ -159,8 +163,12 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
             token_response = await client.post(token_url, data=token_data)
             token_json = token_response.json()
             
+            print(f"[DEBUG] Google token response status: {token_response.status_code}")
+            print(f"[DEBUG] Google token response: {token_json}")
+            
             if "access_token" not in token_json:
-                raise HTTPException(status_code=400, detail="Failed to get access token")
+                error_detail = token_json.get("error_description", token_json.get("error", "Failed to get access token"))
+                raise HTTPException(status_code=400, detail=f"Google OAuth error: {error_detail}")
             
             # Get user info
             user_info_url = f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={token_json['access_token']}"
