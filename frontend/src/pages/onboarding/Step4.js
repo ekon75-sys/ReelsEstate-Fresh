@@ -18,7 +18,7 @@ const OnboardingStep4 = () => {
     YouTube: false,
     TikTok: false,
     LinkedIn: false,
-    Twitter: false
+    X: false
   });
 
   useEffect(() => {
