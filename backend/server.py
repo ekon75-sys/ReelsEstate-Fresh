@@ -567,6 +567,11 @@ async def disconnect_social_media(request: DisconnectRequest, authorization: str
     elif platform == "Instagram":
         update_fields["instagram_connected"] = False
         update_fields["instagram_accounts"] = {}
+    elif platform == "YouTube":
+        update_fields["youtube_connected"] = False
+        update_fields["youtube_access_token"] = None
+        update_fields["youtube_refresh_token"] = None
+        update_fields["youtube_channels"] = []
     
     await db.users.update_one(
         {"id": user["id"]},
