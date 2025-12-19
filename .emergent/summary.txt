@@ -1,132 +1,158 @@
 <analysis>**original_problem_statement:**
-The user's goal is to get their ReelsEstate full-stack application (React/FastAPI) production-ready. After numerous deployment failures and restarts, the current strategy is a complete fresh start. This involves deploying a minimal, clean version of the codebase from a new GitHub repository () to a MongoDB Atlas, Railway (backend), and Vercel (frontend) stack. The immediate objective is to establish a stable, working deployment with a functional Google OAuth login before re-integrating more complex features. The user has experienced extreme frustration due to repeated, cascading deployment failures and has spent significant credits trying to resolve them.
+The user's goal is to get their ReelsEstate full-stack application (React/FastAPI) production-ready. The initial phase focused on achieving a stable deployment after numerous failures. With the application now deployed and the core Google OAuth login working, the user has proceeded through a multi-step onboarding process. The current objective is to fix all issues found during and after the onboarding, particularly on the settings pages, and to complete the integration of various social media platforms (Facebook, Instagram, YouTube, LinkedIn, TikTok).
 
 PRODUCT REQUIREMENTS:
-1.  Deploy a stable, working full-stack application.
-2.  Implement a functional Google OAuth login flow.
-3.  Implement a multi-step user onboarding process.
-4.  Eventually, re-integrate features from the original codebase (video generation, photo enhancement, etc.).
+1.  A stable, deployed full-stack application.
+2.  A functional Google OAuth login flow.
+3.  A complete, multi-step user onboarding process.
+4.  Integration with Facebook, Instagram, YouTube, LinkedIn, and TikTok for content posting.
+5.  A functional dashboard and settings area for managing the application.
+6.  Video generation and management features (future goal).
 
-**User's preferred language**: English, with occasional Dutch phrases. The next agent should respond in English.
+**User's preferred language**: Dutch. The user often communicates in Dutch. The next agent MUST respond in Dutch.
 
 **what currently exists?**
-A minimal version of the ReelsEstate application has been pushed to a new GitHub repository (). The stack consists of a React frontend, a FastAPI backend, and a MongoDB Atlas database. The frontend is deployed on Vercel, and the backend is deployed on Railway. The MongoDB Atlas database is set up and its connection string is configured in Railway. However, the backend deployment on Railway is continuously failing, which renders the entire application non-functional.
+A full-stack application (React frontend on Vercel, FastAPI backend on Railway) connected to a MongoDB Atlas database. The application is live and accessible via the domain . The user can successfully log in with Google and has completed the 6-step onboarding process. However, after completing onboarding, the user discovered that none of the settings pages (Business Info, Branding, Agents, etc.) are loading their saved data. Social media integrations are in various states of completion.
 
 **Last working item**:
--   **Last item agent was working**: Troubleshooting a critical Railway deployment failure. The build process is crashing during the Python environment setup () with an SSL certificate error, preventing the backend server from starting.
--   **Status**: BLOCKED
--   **Agent Testing Done**: N/A (Deployment fails before testing is possible).
--   **Which testing method agent to use?**: NA
--   **User Testing Done**: N
+-   **Last item agent was working**: Debugging multiple issues on the user settings pages. The user reported that after completing onboarding, the settings pages (Business Info, Branding, Agents, Social Media, Subscription) are not loading any of the previously saved data. The agent began investigating and identified that the API calls from these frontend components are likely missing the required  header, which is why the backend is rejecting the requests. The agent was about to fix this.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: Frontend testing agent to verify all settings pages load data correctly after the fix.
+-   **User Testing Done**: Y (User found the bugs on all settings pages).
 
 **All Pending/In progress Issue list**:
--   **Issue 1: Railway backend deployment crashes during build.** (Priority: P0)
-    -   **Description**: The Railway deployment fails with  and . This is a platform-level error occurring during the Python version installation, before the application code is even executed.
-    -   **Attempted fixes**: The agent correctly identified and fixed numerous previous issues (indentation errors, missing endpoints, CORS problems, wrong credentials). However, this new SSL error is a hard blocker at the infrastructure level. The agent suggested redeploying, changing regions, or removing .
+-   **Issue 1: Settings pages do not load user data.** (Priority: P0)
+    -   **Description**: The pages under the Settings section (Business, Agents, Branding, Social Media, Subscription) fail to fetch and display the data saved during onboarding. The user sees empty forms.
+    -   **Attempted fixes**: The agent identified that the API calls in the settings page components are missing the JWT  header.
     -   **Next debug checklist**:
-        1.  Confirm with the user if they want to abandon Railway. The user expressed extreme frustration and was last discussing purchasing a domain on Vercel, indicating a willingness to change strategy.
-        2.  **Recommended Path**: Suggest switching the backend deployment from Railway to **Render**. A previous attempt on Render only failed due to a missing  file, which is a simple and known fix. Render appears to be a more stable alternative.
-        3.  If the user insists on Railway, try the suggested workarounds: redeploy, change the deployment region in Railway settings, or remove  to let Railway use a default Python version.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the absolute blocker. The backend must be successfully deployed for any part of the application to function.
-    -   **Status**: BLOCKED
-    -   **Is recurring issue?**: Y (Deployment failures are the main recurring theme, though the specific error changes).
-    -   **Should Test frontend/backend/both after fix?**: backend
-    -   **Blocked on other issue**: No. This is the primary blocker.
+        1.  Modify all API calls in the settings-related components () to include the  header. The token should be retrieved from .
+        2.  Verify that the corresponding backend endpoints in  are protected and correctly parse the user's identity from the token.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is critical for user experience. Fixing it will allow users to view and edit their information after onboarding, making the application usable.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: frontend
+    -   **Blocked on other issue**: None.
+
+-   **Issue 2: Instagram connection fails.** (Priority: P1)
+    -   **Description**: The app fails to find the user's Instagram Business account, even though it is correctly linked to a Facebook Page. The error is No Instagram Business accounts found.
+    -   **Attempted fixes**: The agent added necessary permissions (, etc.) to the Facebook OAuth flow.
+    -   **Next debug checklist**:
+        1.  Verify the user's role on the Facebook Page (must be Admin).
+        2.  Suggest waiting 24 hours, as Facebook's API sometimes has a delay in recognizing the link.
+        3.  If it still fails, add a temporary debug endpoint to the backend to inspect the raw data returned by the Facebook Graph API  endpoint to see what permissions or data is missing.
+    -   **Why fix this issue and what will be achieved with the fix?**: Completes a core social media integration.
+    -   **Status**: BLOCKED (User decided to move on; pending user action/time).
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: None.
 
 **In progress Task List**:
--   **Task 1: Achieve a Stable, End-to-End Deployment.** (Priority: P0)
-    -   **Where to resume**: The backend deployment is the critical failure point. The next agent should immediately propose a switch from Railway to Render to the user, as it's the most likely path to break the cycle of deployment failures.
-    -   **What will be achieved with this?**: A live, working application with a functional backend, which is the foundation for all other features.
-    -   **Status**: BLOCKED
-    -   **Should Test frontend/backend/both after fix?**: both
-    -   **Blocked on something**: Issue 1: Railway backend deployment crashes.
+-   None. The settings issue is the only active task.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **P0: Fix Google OAuth Login Flow**: Once the backend is deployed, the full login flow must be tested and debugged. This includes ensuring the frontend correctly stores the JWT token and redirects to the onboarding flow. The user was last stuck in a loop of Successfully logged in messages before being redirected back to the login screen.
-    -   **P1: Fix Onboarding Flow**: The user reported a Failed to save information error on Step 1 of the onboarding. This is due to missing backend endpoints (, ). While these endpoints were added to  in later attempts, the server never ran successfully with them. The full onboarding flow needs to be implemented and tested.
+    -   **P0: Test LinkedIn Integration**: Implement the test for the LinkedIn integration for personal profile posting (Option A). This requires adding the credentials to Railway and testing the connection flow on Step 4.
+    -   **P1: Build out the main Dashboard**: Create the main dashboard page that users see after logging in. This should provide a summary of their account, connected social media, etc.
+    -   **P2: Implement Video Upload/Management**: Add core features for uploading, managing, and preparing videos for posting.
 -   **Future Tasks**:
-    -   **P2**: Re-integrate all original application features from the initial codebase (video quality improvements, UI updates, photo enhancement, etc.) into the new stable deployment.
-    -   **P3**: Implement live social media connections.
-    -   **P4**: Implement custom font uploading feature.
+    -   **P3: Implement Social Media Posting**: Create the functionality to actually post the prepared videos to the connected social media accounts (Facebook, Instagram, YouTube, LinkedIn).
+    -   **P4: Complete YouTube Integration**: This is blocked until Google completes its manual app verification process.
+    -   **P5: Complete TikTok Integration**: Paused. Requires creating a demo video of the finished app and submitting it to TikTok for a multi-week review.
+    -   **P6: Implement LinkedIn Company Page Posting**: Paused. Requires the user to form a legal business entity (SL) and for a second, separate LinkedIn developer app to be approved.
+    -   **P7: Integrate Stripe for Payments**: The current subscription is a mock. A real payment gateway needs to be integrated to handle paid plans after the free trial.
+    -   **P8: Implement custom font uploading feature.**
 
 **Completed work in this session**
--   Created and pushed a clean, minimal version of the application to a new GitHub repository: .
--   Successfully guided the user through setting up a MongoDB Atlas database, creating a user, and obtaining the connection string.
--   Successfully deployed the frontend to Vercel.
--   Identified and fixed numerous critical backend issues in , including:
-    -   Fatal Python indentation errors that were preventing the server from starting.
-    -   Missing API endpoints for authentication and onboarding (, , , etc.).
-    -   Recurring CORS preflight (OPTIONS) errors.
--   Guided the user through setting up Google OAuth credentials in the Google Cloud Console.
+-   **Deployment Stability**: Migrated backend to Railway, resolving critical deployment crashes and establishing a stable end-to-end CI/CD pipeline.
+-   **GitHub Workflow**: Resolved GitHub connection issues by using a personal access token, enabling code pushes.
+-   **Full Onboarding Flow (Steps 1-6)**: Implemented and debugged the entire multi-step onboarding process, including adding numerous missing backend endpoints.
+    -   Business Info (Step 1)
+    -   Logo Upload (Step 2)
+    -   Branding Preferences (Step 3 - added more currencies)
+    -   Social Media Connections (Step 4 - Implemented Facebook, YouTube, LinkedIn personal)
+    -   Add Agents (Step 5)
+    -   Subscription Activation (Step 6 - Mocked)
+-   **Social Media Integrations**:
+    -   **Facebook**: Fully implemented and working.
+    -   **YouTube**: Implemented, but blocked by Google verification.
+    -   **LinkedIn (Personal)**: Implemented, ready for testing.
+    -   **X (Twitter)**: Removed from the entire application due to paid API costs.
+-   **SEO/Verification**: Created , , and added required privacy/terms links to the homepage to assist with Google verification.
 
 **Earlier issues found/mentioned but not fixed**
--   The core issue of an unstable deployment pipeline remains unresolved. The agent and user have cycled through multiple platforms (Vercel, Railway, Render) and error types (git auth, secrets, port mismatch, CORS, indentation, SSL certs) without achieving a stable end-to-end working application.
+- All known issues are captured in the **All Pending/In progress Issue list**.
 
 **Known issue recurrence from previous fork**
--   **Indentation Errors**: The  file has been corrupted by indentation errors multiple times, likely due to copy-paste issues. This has caused the server to crash silently, leading to misleading 400/404 errors. **The next agent must always validate Python syntax before deploying.**
--   **CORS Errors**: CORS issues have appeared repeatedly due to Vercel's changing preview URLs and missing OPTIONS handlers on the backend. A robust, multi-origin CORS policy is required.
+-   None. The major recurring issues from the previous fork (deployment failures, Python indentation errors) have been resolved.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
 -   **Frontend**: React (hosted on Vercel)
--   **Backend**: FastAPI (attempted deployment on Railway/Render)
+-   **Backend**: FastAPI (hosted on Railway)
 -   **Database**: MongoDB Atlas
 -   **Authentication**: Google OAuth 2.0 with JWT
--   **Deployment**: The main challenge is finding a stable CI/CD platform for the backend.
+-   **Social Integrations**: Facebook Graph API, Google (YouTube) API, LinkedIn API.
 
 **key DB schema**
--   : { uid=0(root) gid=0(root) groups=0(root): string, : string, : string, : string, : string, : number, : datetime, : bool, : number, : string, etc. }
+-   : { , , , , , : [], : {}, : { : {  }, : {  }, : {  } } }
 
 **changes in tech stack**
--   The user has attempted to switch from Railway to Render and back. The next agent should recommend sticking with Render for the backend.
+-   None. The stack has been stabilized on React, FastAPI, MongoDB, Vercel, and Railway.
 
 **All files of reference**
--   : The most critical and problematic file. It contains all backend logic. The last known correct version was provided to the user, but it may still have issues.
--   : Contains Python dependencies. Was updated to fix / version conflicts.
--   **Vercel Environment Variables**: , 
--   **Railway/Render Environment Variables**: , , , , , , 
+-   : Contains all backend logic. Has been heavily modified to add all missing endpoints for onboarding and social media.
+-   : Directory containing the components for each step of the onboarding flow.
+-   : Directory containing the components for the settings pages, which are currently broken.
+-   : Contains all frontend routes.
+-   Callback pages for each OAuth flow (e.g., , ).
 
 **Critical Info for New Agent**
--   **User is extremely frustrated.** The top priority is to break the cycle of deployment failures and get a stable, working application. Do not get stuck debugging Railway; propose a switch to Render, which failed for a much simpler, known reason.
--   **The recurring  in  is the most likely root cause of many previous unexplained 400/404/CORS errors.** The backend was likely never running correctly. **ALWAYS validate Python syntax () before pushing changes.**
--   **Vercel generates multiple URLs** (a clean production URL and preview URLs with hashes). The  environment variable on the backend must include all of them, separated by a comma, to avoid CORS errors.
--   The user is considering buying a custom domain (). This is a good idea as it will simplify the OAuth and CORS configuration significantly. Confirm this plan with the user.
+-   The user wants responses in **Dutch**.
+-   The main deployment infrastructure is now stable. The focus should be on application-level bugs and features.
+-   The immediate priority is fixing the settings pages by adding the  header to all API calls within them.
+-   Several social media integrations are blocked pending external actions (Google/TikTok review, user business setup for LinkedIn). Do not spend time on these until the blockers are removed.
+-   The user has already provided credentials for Facebook, Google, and the first LinkedIn app. The agent has credentials for the (paused) TikTok app. These are in the Railway environment variables.
 
-**documents created in this job**
+**documents and test_reports created in this job**
 - None.
 
-**Last 10 User Messages and any pending user messages**
-1.  **User**: Again a 400 error. We're going in circles.
-2.  **Agent**: Acknowledged the issue, called troubleshoot agent.
-3.  **Troubleshoot Agent**: Found critical indentation errors in .
-4.  **Agent**: Provided a clean  to fix indentation.
-5.  **User**: It crashed again. (Provided logs showing the indentation error was still there).
-6.  **Agent**: Provided another clean .
-7.  **User**: It didn't crash, but now login fails with a 405 error (Failed to fetch user).
-8.  **Agent**: Explained the 405 error was due to a missing  endpoint and provided the full  with the fix.
-9.  **User**: Now it's a blank page after login: .
-10. **User**: The app crashed again on Railway with an SSL error during build. User expresses extreme frustration and asks if buying a domain would be better.
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **User**: We continue with testing the setup. It went correctly to the next step, add agent details. I gave all the info and the photo, when I pressed the button + add agent I got the following error: Failed to add agent
+2.  **Agent**: (Fixes missing agent endpoints)
+3.  **User**: OK, agents work. Continued to subscriptions: chose premium plan and clicked start 3 day free trial. Got the following error: Failed to activate subscription
+4.  **Agent**: (Fixes missing subscription endpoint)
+5.  **Agent**: Great! Onboarding works. Reviewing settings, I see several issues...
+6.  **User**: I had already tested and told you what issues there are with the settings. Please solve those first, then we will test the app's functionality.
+7.  **Agent**: Sorry! You're right. Let's fix these issues now. Starting with Business Info...
+8.  **Agent**: (Tries to view file, fails, searches for file)
+9.  **Agent**: (Finds correct file names)
+10. **Agent**: Perfect! Let me view all settings files and fix them. I see the problems! The endpoints need Authorization headers.
 
 **Project Health Check:**
--   **Broken**: The backend deployment is completely broken and prevents the application from functioning.
+-   **Functional**: Core login and onboarding flow.
+-   **Broken**: The entire Settings section is non-functional as it cannot load any data.
+-   **Mocked**: The subscription system is mocked; it activates a trial but does not handle real payments.
 
 **3rd Party Integrations**
--   **Google OAuth 2.0**: For user authentication. Requires user-provided Client ID and Secret.
--   **MongoDB Atlas**: Cloud database. Requires user-provided connection string.
+-   **Google OAuth / YouTube Data API**: Implemented. Blocked by Google's app verification process (App not verified screen appears). Requires user-provided keys.
+-   **Facebook Graph API (for Facebook & Instagram)**: Implemented. Facebook connection works. Instagram connection is failing to find the linked business account. Requires user-provided keys.
+-   **LinkedIn API**: Implemented for personal profile posting. Awaiting testing and credentials to be added to Railway. A second app for Company Page posting is on hold. Requires user-provided keys.
+-   **TikTok API**: Paused. Implementation is in the code, but is non-functional as TikTok requires a full app review (with demo video) before OAuth can be used, even for testing. Requires user-provided keys.
 -   **Vercel**: Frontend hosting.
--   **Railway / Render**: Backend hosting.
+-   **Railway**: Backend hosting.
+-   **MongoDB Atlas**: Database.
 
 **Testing status**
--   **Testing agent used after significant changes**: NO
--   **Troubleshoot agent used after agent stuck in loop**: YES, multiple times. It correctly identified critical indentation errors and misconfigured credentials.
--   **Test files created**: None.
--   **Known regressions**: The entire deployment pipeline is regressed. The application is not in a runnable state.
+-   Testing agent used after significant changes: NO
+-   Troubleshoot agent used after agent stuck in loop: NO (in this session)
+-   Test files created: None.
+-   Known regressions: None.
 
 **Credentials to test flow:**
--   The user is the only one who can test the full Google OAuth flow with their account .
+-   The user performs all end-to-end testing with their own accounts (). All necessary API keys (Google, Facebook, LinkedIn App 1, TikTok) have been provided by the user and should be in the Railway environment variables.
 
 **What agent forgot to execute**
-- The agent repeatedly failed to catch the critical  in  before deploying, which wasted a significant amount of time and user credits. A simple local syntax check () would have prevented this loop. The agent also got stuck trying to debug Railway instead of pivoting to a more stable solution like Render sooner.</analysis>
+-   The agent did not proactively check for missing backend endpoints for the settings pages after completing the onboarding flow, leading to the user discovering the bugs. The agent should have reviewed the settings pages' code and implemented the necessary endpoints in advance.</analysis>
