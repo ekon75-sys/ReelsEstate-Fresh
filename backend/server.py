@@ -572,6 +572,11 @@ async def disconnect_social_media(request: DisconnectRequest, authorization: str
         update_fields["youtube_access_token"] = None
         update_fields["youtube_refresh_token"] = None
         update_fields["youtube_channels"] = []
+    elif platform == "TikTok":
+        update_fields["tiktok_connected"] = False
+        update_fields["tiktok_access_token"] = None
+        update_fields["tiktok_refresh_token"] = None
+        update_fields["tiktok_user"] = {}
     
     await db.users.update_one(
         {"id": user["id"]},
