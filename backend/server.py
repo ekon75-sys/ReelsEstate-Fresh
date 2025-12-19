@@ -144,12 +144,10 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
         # Exchange code for token
         token_url = "https://oauth2.googleapis.com/token"
         
-        # Use redirect_uri from request if provided, otherwise fallback to env
-        redirect_uri = auth_data.redirect_uri or os.getenv("GOOGLE_REDIRECT_URI")
+        # HARDCODED redirect_uri to ensure correct value
+        redirect_uri = "https://reels-estate.app/auth/google/callback"
         
-        print(f"[DEBUG] Google OAuth callback")
-        print(f"[DEBUG] redirect_uri from request: {auth_data.redirect_uri}")
-        print(f"[DEBUG] redirect_uri being used: {redirect_uri}")
+        print(f"[DEBUG] Using hardcoded redirect_uri: {redirect_uri}")
         
         token_data = {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
