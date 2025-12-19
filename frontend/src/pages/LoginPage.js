@@ -257,6 +257,17 @@ const LoginPage = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Footer Links */}
+        <div className="mt-6 text-center text-sm text-gray-600 space-x-4">
+          <Link to="/privacy-policy" className="hover:text-brand-orange-500 hover:underline">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link to="/terms-of-service" className="hover:text-brand-orange-500 hover:underline">
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </div>
   );
