@@ -93,7 +93,7 @@ const AgentsSettings = () => {
       photo_url: agent.photo_url
     });
     if (agent.photo_url) {
-      const photoUrl = agent.photo_url.startsWith('http') ? agent.photo_url : `${process.env.REACT_APP_BACKEND_URL}${agent.photo_url}`;
+      const photoUrl = agent.photo_url.startsWith('data:') || agent.photo_url.startsWith('http') ? agent.photo_url : `${process.env.REACT_APP_BACKEND_URL}${agent.photo_url}`;
       setPhotoPreview(photoUrl);
     }
     setShowForm(true);
