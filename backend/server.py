@@ -134,12 +134,16 @@ async def google_oauth_callback(auth_data: GoogleAuthRequest):
     try:
         # Exchange code for token
         token_url = "https://oauth2.googleapis.com/token"
+        
+        # Use redirect_uri from request if provided, otherwise fallback to env
+        redirect_uri = auth_data.redirect_uri or os.getenv("GOOGLE_REDIRECT_URI")
+        
         token_data = {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
             "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
             "code": auth_data.code,
             "grant_type": "authorization_code",
-            "redirect_uri": os.getenv("GOOGLE_REDIRECT_URI")
+            "redirect_uri": redirect_uri
         }
         
         async with httpx.AsyncClient() as client:
