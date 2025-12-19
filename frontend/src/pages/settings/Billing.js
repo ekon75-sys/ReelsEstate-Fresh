@@ -211,16 +211,6 @@ const BillingSettings = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="vat_number">VAT / Tax ID Number</Label>
-              <Input
-                id="vat_number"
-                value={formData.vat_number || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, vat_number: e.target.value }))}
-                placeholder="e.g., ESB12345678"
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label>Billing Address</Label>
               {businessInfo ? (
                 <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
