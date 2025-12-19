@@ -99,8 +99,18 @@ const OnboardingStep4 = () => {
         console.error('Instagram connection error:', error);
         toast.error(error.response?.data?.detail || 'Failed to connect Instagram. Make sure Facebook is connected first.');
       }
+    } else if (platform === 'YouTube') {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/youtube/auth-url`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        window.location.href = response.data.auth_url;
+      } catch (error) {
+        toast.error('Kan YouTube verbinding niet starten');
+      }
     } else {
-      toast.info(`${platform} integration coming soon!`);
+      toast.info(`${platform} integratie komt binnenkort!`);
     }
   };
 
