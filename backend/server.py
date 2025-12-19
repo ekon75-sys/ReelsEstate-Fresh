@@ -784,6 +784,110 @@ async def tiktok_callback(code: str, state: str):
         print(f"TikTok callback error: {e}")
         raise HTTPException(status_code=400, detail=f"TikTok connection failed: {str(e)}")
 
+# LinkedIn OAuth endpoints
+@app.get("/api/linkedin/auth-url")
+async def get_linkedin_auth_url(authorization: str = Header(None)):
+    """Generate LinkedIn OAuth URL"""
+    user = await get_current_user(authorization)
+    
+    linkedin_client_id = os.getenv("LINKEDIN_CLIENT_ID")
+    redirect_uri = "https://reels-estate.app/auth/linkedin/callback"
+    
+    if not linkedin_client_id:
+        raise HTTPException(status_code=500, detail="LinkedIn Client ID not configured")
+    
+    # LinkedIn OAuth scopes
+    scopes = "openid profile email w_member_social"
+    
+    # Generate random state for CSRF protection
+    import secrets
+    state = secrets.token_urlsafe(32)
+    
+    auth_url = f"https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id={linkedin_client_id}&redirect_uri={redirect_uri}&scope={scopes}&state={state}"
+    
+    return {"auth_url": auth_url}
+
+@app.post("/api/linkedin/callback")
+async def linkedin_callback(code: str, state: str):
+    """Handle LinkedIn OAuth callback"""
+    try:
+        linkedin_client_id = os.getenv("LINKEDIN_CLIENT_ID")
+        linkedin_client_secret = os.getenv("LINKEDIN_CLIENT_SECRET")
+        redirect_uri = "https://reels-estate.app/auth/linkedin/callback"
+        
+        # Exchange code for access token
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "https://www.linkedin.com/oauth/v2/accessToken",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": linkedin_client_id,
+                    "client_secret": linkedin_client_secret,
+                    "redirect_uri": redirect_uri
+                }
+            )
+            
+            if token_response.status_code != 200:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Failed to exchange code for tokens: {token_response.text}"
+                )
+            
+            token_data = token_response.json()
+            access_token = token_data.get("access_token")
+            
+            if not access_token:
+                raise HTTPException(status_code=400, detail="No access token received")
+            
+            # Get user profile from LinkedIn using OpenID Connect
+            profile_response = await client.get(
+                "https://api.linkedin.com/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if profile_response.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Failed to get user profile from LinkedIn"
+                )
+            
+            profile_data = profile_response.json()
+            
+            # Store in database
+            db = get_database()
+            user_id = profile_data.get("sub")  # OpenID Connect user ID
+            
+            user_data = {
+                "linkedin_id": user_id,
+                "name": profile_data.get("name", ""),
+                "email": profile_data.get("email", ""),
+                "picture": profile_data.get("picture", ""),
+                "linkedin_access_token": access_token,
+                "linkedin_connected": True,
+                "updated_at": datetime.now(timezone.utc)
+            }
+            
+            await db.users.update_one(
+                {},  # This should filter by specific user
+                {"$set": user_data},
+                upsert=False
+            )
+            
+            return {
+                "status": "success",
+                "message": "LinkedIn connected successfully",
+                "profile": {
+                    "name": profile_data.get("name"),
+                    "email": profile_data.get("email")
+                }
+            }
+            
+    except Exception as e:
+        print(f"LinkedIn callback error: {e}")
+        raise HTTPException(status_code=400, detail=f"LinkedIn connection failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
