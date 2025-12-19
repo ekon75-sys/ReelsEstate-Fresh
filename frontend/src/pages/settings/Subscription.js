@@ -8,6 +8,11 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const SubscriptionSettings = () => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +26,9 @@ const SubscriptionSettings = () => {
 
   const loadSubscription = async () => {
     try {
-      const response = await axios.get(`${API_URL}/subscription`);
+      const response = await axios.get(`${API_URL}/subscription`, {
+        headers: getAuthHeaders()
+      });
       setSubscription(response.data);
     } catch (error) {
       console.error('Failed to load subscription:', error);
@@ -33,7 +40,9 @@ const SubscriptionSettings = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API_URL}/subscription/cancel`);
+      await axios.post(`${API_URL}/subscription/cancel`, {}, {
+        headers: getAuthHeaders()
+      });
       toast.success('Subscription cancelled');
       await loadSubscription();
     } catch (error) {
@@ -54,6 +63,8 @@ const SubscriptionSettings = () => {
       const response = await axios.post(`${API_URL}/discount-codes/validate`, {
         code: discountCode.trim(),
         plan_price: planPrice
+      }, {
+        headers: getAuthHeaders()
       });
 
       if (response.data.valid) {
@@ -80,6 +91,8 @@ const SubscriptionSettings = () => {
         await axios.post(`${API_URL}/discount-codes/apply`, {
           code: discountCode.trim(),
           plan_price: plan.price
+        }, {
+          headers: getAuthHeaders()
         });
         finalPrice = appliedDiscount.final_price;
       }
@@ -88,6 +101,8 @@ const SubscriptionSettings = () => {
       await axios.post(`${API_URL}/subscription`, {
         plan_name: plan.name,
         plan_price: finalPrice
+      }, {
+        headers: getAuthHeaders()
       });
 
       toast.success(`Successfully subscribed to ${plan.name} plan!`);
