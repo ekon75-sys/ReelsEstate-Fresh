@@ -529,7 +529,7 @@ async def get_social_media_connections(authorization: str = Header(None)):
         },
         {
             "platform": "YouTube",
-            "connected": False
+            "connected": user.get("youtube_connected", False)
         },
         {
             "platform": "TikTok",
