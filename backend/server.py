@@ -268,7 +268,7 @@ async def get_onboarding_progress(authorization: str = Header(None)):
 # File upload endpoints
 @app.post("/api/upload/logo")
 async def upload_logo(file: UploadFile = File(...), authorization: str = Header(None)):
-    """Upload company logo"""
+    """Upload company logo - stores as base64 in database"""
     user = await get_current_user(authorization)
     
     # Validate file type
@@ -276,19 +276,15 @@ async def upload_logo(file: UploadFile = File(...), authorization: str = Header(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Only PNG, JPG, and SVG are allowed")
     
-    # Create user-specific directory
-    user_dir = UPLOAD_DIR / user["id"]
-    user_dir.mkdir(exist_ok=True)
+    # Read file and convert to base64
+    import base64
+    file_content = await file.read()
+    base64_data = base64.b64encode(file_content).decode('utf-8')
     
-    # Save file
-    file_extension = file.filename.split('.')[-1]
-    file_path = user_dir / f"logo.{file_extension}"
+    # Create data URL
+    logo_url = f"data:{file.content_type};base64,{base64_data}"
     
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Update user with logo URL
-    logo_url = f"/uploads/{user['id']}/logo.{file_extension}"
+    # Store in database
     db = get_database()
     await db.users.update_one(
         {"id": user["id"]},
