@@ -996,11 +996,126 @@ async def get_subscription(authorization: str = Header(None)):
     
     return {
         "plan": user.get("plan", "free"),
+        "plan_name": user.get("plan", "free"),
         "plan_price": user.get("plan_price", 0),
         "trial_active": user.get("trial_active", False),
         "trial_end_date": user.get("trial_end_date"),
-        "subscription_status": user.get("subscription_status", "inactive")
+        "subscription_status": user.get("subscription_status", "inactive"),
+        "status": user.get("subscription_status", "inactive")
     }
+
+# Billing model
+class BillingRequest(BaseModel):
+    vat_number: Optional[str] = ""
+    billing_address: Optional[str] = ""
+    payment_method: Optional[str] = ""
+    saved_cards: Optional[str] = "[]"
+
+@app.get("/api/billing")
+async def get_billing(authorization: str = Header(None)):
+    """Get user's billing information"""
+    user = await get_current_user(authorization)
+    
+    billing_info = user.get("billing_info", {})
+    return {
+        "vat_number": billing_info.get("vat_number", ""),
+        "billing_address": billing_info.get("billing_address", ""),
+        "payment_method": billing_info.get("payment_method", ""),
+        "saved_cards": billing_info.get("saved_cards", "[]")
+    }
+
+@app.post("/api/billing")
+async def save_billing(billing: BillingRequest, authorization: str = Header(None)):
+    """Save user's billing information"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "billing_info": billing.dict(),
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Billing information saved"}
+
+# Subscription cancel endpoint
+@app.post("/api/subscription/cancel")
+async def cancel_subscription(authorization: str = Header(None)):
+    """Cancel user's subscription"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "subscription_status": "cancelled",
+            "trial_active": False,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    return {"status": "success", "message": "Subscription cancelled"}
+
+# Discount code endpoints
+class DiscountValidateRequest(BaseModel):
+    code: str
+    plan_price: float
+
+@app.post("/api/discount-codes/validate")
+async def validate_discount_code(request: DiscountValidateRequest, authorization: str = Header(None)):
+    """Validate a discount code"""
+    user = await get_current_user(authorization)
+    
+    # For now, implement some sample discount codes
+    valid_codes = {
+        "LAUNCH20": {"type": "percentage", "value": 20},
+        "WELCOME10": {"type": "percentage", "value": 10},
+        "EARLY50": {"type": "percentage", "value": 50},
+    }
+    
+    code_upper = request.code.upper()
+    if code_upper in valid_codes:
+        discount = valid_codes[code_upper]
+        discount_amount = (request.plan_price * discount["value"]) / 100
+        final_price = request.plan_price - discount_amount
+        
+        return {
+            "valid": True,
+            "message": f"Discount code applied: {discount['value']}% off",
+            "discount_type": discount["type"],
+            "discount_value": discount["value"],
+            "discount_amount": round(discount_amount, 2),
+            "final_price": round(final_price, 2)
+        }
+    
+    return {
+        "valid": False,
+        "message": "Invalid discount code"
+    }
+
+@app.post("/api/discount-codes/apply")
+async def apply_discount_code(request: DiscountValidateRequest, authorization: str = Header(None)):
+    """Apply a discount code to user's account"""
+    user = await get_current_user(authorization)
+    db = get_database()
+    
+    # Validate first
+    validation = await validate_discount_code(request, authorization)
+    
+    if validation["valid"]:
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {
+                "applied_discount_code": request.code.upper(),
+                "discount_applied_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        return {"status": "success", "message": "Discount code applied"}
+    
+    raise HTTPException(status_code=400, detail="Invalid discount code")
 
 if __name__ == "__main__":
     import uvicorn
