@@ -11,6 +11,7 @@ import GoogleCallback from '@/pages/GoogleCallback';
 import FacebookCallback from '@/pages/FacebookCallback';
 import YouTubeCallback from '@/pages/YouTubeCallback';
 import TikTokCallback from '@/pages/TikTokCallback';
+import LinkedInCallback from '@/pages/LinkedInCallback';
 import DashboardPage from '@/pages/DashboardPage';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
