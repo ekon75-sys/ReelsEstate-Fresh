@@ -155,7 +155,7 @@ async def get_current_user(request: Request, authorization: str = Header(None)):
 @app.get("/api/auth/me")
 async def get_me(request: Request, authorization: str = Header(None)):
     """Get current authenticated user"""
-    user = await get_current_user(http_request, authorization)
+    user = await get_current_user(request, authorization)
     return UserResponse(
         id=user["id"],
         email=user["email"],
