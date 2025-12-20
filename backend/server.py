@@ -961,7 +961,7 @@ async def get_tiktok_status(request: Request, authorization: str = Header(None))
     return {"connected": user.get("tiktok_connected", False)}
 
 @app.delete("/api/auth/{platform}/disconnect")
-async def disconnect_platform(platform: str, authorization: str = Header(None)):
+async def disconnect_platform(request: Request, platform: str, authorization: str = Header(None)):
     """Disconnect a social media platform"""
     user = await get_current_user(request, authorization)
     db = get_database()
