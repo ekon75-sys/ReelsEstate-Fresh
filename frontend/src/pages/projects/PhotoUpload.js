@@ -395,7 +395,7 @@ const PhotoUpload = () => {
 
   const handleDeletePhoto = async (photoId) => {
     try {
-      await axios.delete(`${API_URL}/projects/${projectId}/photos/${photoId}`);
+      await axios.delete(`${API_URL}/projects/${projectId}/photos/${photoId}`, { withCredentials: true });
       toast.success('Photo deleted');
       await loadPhotos();
     } catch (error) {
