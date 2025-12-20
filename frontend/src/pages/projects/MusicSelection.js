@@ -342,7 +342,7 @@ const MusicSelection = () => {
             )}
 
             <div className="flex flex-col md:flex-row justify-between gap-3 pt-6 border-t">
-              <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/upload`)} className="w-full md:w-auto">
+              <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/photos`)} className="w-full md:w-auto">
                 <ArrowLeft className="mr-2 w-5 h-5" />
                 Back to Photos
               </Button>
