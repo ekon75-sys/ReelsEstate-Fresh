@@ -551,7 +551,7 @@ async def get_business_info(request: Request, authorization: str = Header(None))
     return business_info
 
 @app.post("/api/business-info")
-async def save_business_info(business_info: BusinessInfoRequest, authorization: str = Header(None)):
+async def save_business_info(request: Request, business_info: BusinessInfoRequest, authorization: str = Header(None)):
     """Save business information"""
     user = await get_current_user(authorization)
     db = get_database()
@@ -568,7 +568,7 @@ async def save_business_info(business_info: BusinessInfoRequest, authorization: 
     return {"status": "success", "message": "Business information saved"}
 
 @app.put("/api/onboarding/progress")
-async def update_onboarding_progress(progress: OnboardingProgressRequest, authorization: str = Header(None)):
+async def update_onboarding_progress(request: Request, progress: OnboardingProgressRequest, authorization: str = Header(None)):
     """Update onboarding progress"""
     user = await get_current_user(authorization)
     db = get_database()
@@ -597,7 +597,7 @@ async def get_onboarding_progress(request: Request, authorization: str = Header(
 
 # File upload endpoints
 @app.post("/api/upload/logo")
-async def upload_logo(file: UploadFile = File(...), authorization: str = Header(None)):
+async def upload_logo(request: Request, file: UploadFile = File(...), authorization: str = Header(None)):
     """Upload company logo - stores as base64 in database"""
     user = await get_current_user(authorization)
     
@@ -646,7 +646,7 @@ class BrandingRequest(BaseModel):
     currency: str = "€"
 
 @app.post("/api/branding")
-async def save_branding(branding: BrandingRequest, authorization: str = Header(None)):
+async def save_branding(request: Request, branding: BrandingRequest, authorization: str = Header(None)):
     """Save user branding preferences"""
     user = await get_current_user(authorization)
     db = get_database()
@@ -880,7 +880,7 @@ class DisconnectRequest(BaseModel):
     platform: str
 
 @app.post("/api/social-media/disconnect")
-async def disconnect_social_media(request: DisconnectRequest, authorization: str = Header(None)):
+async def disconnect_social_media(http_request: Request, request: DisconnectRequest, authorization: str = Header(None)):
     """Disconnect a social media platform"""
     user = await get_current_user(authorization)
     db = get_database()
