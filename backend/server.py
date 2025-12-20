@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Header, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi.responses import StreamingResponse
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Optional, List, Dict
@@ -12,6 +13,7 @@ from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 import shutil
 from pathlib import Path
+import io
 
 # Stripe integration - using official stripe library
 import stripe
