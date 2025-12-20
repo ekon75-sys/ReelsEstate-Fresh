@@ -91,7 +91,8 @@ const MusicSelection = () => {
 
     try {
       const response = await axios.post(`${API_URL}/projects/${projectId}/upload-music`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true
       });
       setMusicUrl(response.data.music_url);
       setMusicFile(file);
