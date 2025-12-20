@@ -47,35 +47,18 @@ const LoginPage = () => {
 
       console.log('Processing Emergent Auth session_id...');
 
-      // Exchange session_id for user data via Emergent Auth
-      const authResponse = await axios.get(
-        'https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data',
-        {
-          headers: {
-            'X-Session-ID': sessionId
-          }
-        }
-      );
-
-      const userData = authResponse.data;
-      console.log('Got user data from Emergent Auth:', userData.email);
-
-      // Send to our backend to create/update user and session
+      // Send session_id to backend - backend will call Emergent Auth API (avoids CORS)
       const backendResponse = await axios.post(
-        `${API_URL}/auth/emergent-session`,
+        `${API_URL}/auth/emergent-callback`,
         {
-          user_id: userData.id,
-          email: userData.email,
-          name: userData.name,
-          picture: userData.picture,
-          session_token: userData.session_token
+          session_id: sessionId
         },
         {
           withCredentials: true
         }
       );
 
-      console.log('Session stored in backend');
+      console.log('Session processed by backend');
       
       // Update auth context
       const user = backendResponse.data.user;
