@@ -2566,7 +2566,7 @@ async def generate_project_video(
             
             outro_path = os_module.path.join(temp_dir, "outro.jpg")
             outro_img.save(outro_path, "JPEG", quality=95)
-            outro_clip = ImageClip(outro_path, duration=3)
+            outro_clip = ImageClip(outro_path, duration=2)
             all_clips.append(outro_clip)
             
             # === CONCATENATE ALL CLIPS ===
