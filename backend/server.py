@@ -2239,7 +2239,14 @@ async def generate_project_video(
     format_type: str = "16:9",
     authorization: str = Header(None)
 ):
-    """Generate a video for a project (mock implementation)"""
+    """Generate a real video for a project using moviepy"""
+    import base64
+    import tempfile
+    import os as os_module
+    from moviepy import ImageClip, concatenate_videoclips, CompositeVideoClip, AudioFileClip
+    from PIL import Image
+    import io
+    
     user = await get_current_user(request, authorization)
     db = get_database()
     
@@ -2248,22 +2255,130 @@ async def generate_project_video(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    if not project.get("photos") or len(project.get("photos", [])) == 0:
+    photos = project.get("photos", [])
+    if not photos or len(photos) == 0:
         raise HTTPException(status_code=400, detail="Project has no photos")
     
-    # Create a mock video record (real implementation would generate actual video)
-    video_id = str(ObjectId())
-    video_data = {
-        "id": video_id,
-        "project_id": project_id,
-        "user_id": user["id"],
-        "format": format_type,
-        "status": "completed",
-        "file_url": f"/api/videos/{video_id}/placeholder.mp4",  # Placeholder URL
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
+    # Determine video dimensions based on format
+    if format_type == "16:9":
+        width, height = 1920, 1080
+    elif format_type == "9:16":
+        width, height = 1080, 1920
+    elif format_type == "1:1":
+        width, height = 1080, 1080
+    else:
+        width, height = 1920, 1080
     
-    await db.project_videos.insert_one(video_data)
-    
-    return {"status": "success", "video_id": video_id, "message": "Video generated (mock)"}
+    try:
+        # Create temp directory for processing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            clips = []
+            duration_per_photo = 3  # seconds per photo
+            
+            for i, photo in enumerate(photos):
+                # Get the photo URL (either enhanced or original)
+                photo_url = photo.get("enhanced_url") or photo.get("original_url")
+                
+                if not photo_url:
+                    continue
+                
+                # Handle base64 encoded images
+                if photo_url.startswith("data:"):
+                    # Extract base64 data
+                    header, base64_data = photo_url.split(",", 1)
+                    image_data = base64.b64decode(base64_data)
+                    
+                    # Save to temp file
+                    temp_image_path = os_module.path.join(temp_dir, f"photo_{i}.jpg")
+                    with open(temp_image_path, "wb") as f:
+                        f.write(image_data)
+                    
+                    # Open and resize image to fit video dimensions
+                    img = Image.open(temp_image_path)
+                    img = img.convert("RGB")
+                    
+                    # Calculate resize to fill frame (crop to fit)
+                    img_ratio = img.width / img.height
+                    target_ratio = width / height
+                    
+                    if img_ratio > target_ratio:
+                        # Image is wider, crop width
+                        new_height = img.height
+                        new_width = int(new_height * target_ratio)
+                        left = (img.width - new_width) // 2
+                        img = img.crop((left, 0, left + new_width, new_height))
+                    else:
+                        # Image is taller, crop height
+                        new_width = img.width
+                        new_height = int(new_width / target_ratio)
+                        top = (img.height - new_height) // 2
+                        img = img.crop((0, top, new_width, top + new_height))
+                    
+                    # Resize to target dimensions
+                    img = img.resize((width, height), Image.LANCZOS)
+                    
+                    # Save resized image
+                    resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
+                    img.save(resized_path, "JPEG", quality=95)
+                    
+                    # Create video clip from image
+                    clip = ImageClip(resized_path, duration=duration_per_photo)
+                    clips.append(clip)
+            
+            if not clips:
+                raise HTTPException(status_code=400, detail="No valid photos to process")
+            
+            # Concatenate all clips
+            final_clip = concatenate_videoclips(clips, method="compose")
+            
+            # Generate unique filename
+            video_id = str(ObjectId())
+            output_filename = f"video_{video_id}.mp4"
+            
+            # Create uploads directory if it doesn't exist
+            uploads_dir = "/app/backend/uploads/videos"
+            os_module.makedirs(uploads_dir, exist_ok=True)
+            
+            output_path = os_module.path.join(uploads_dir, output_filename)
+            
+            # Write video file
+            final_clip.write_videofile(
+                output_path,
+                fps=24,
+                codec="libx264",
+                audio=False,
+                preset="medium",
+                threads=2
+            )
+            
+            # Close clips to free memory
+            for clip in clips:
+                clip.close()
+            final_clip.close()
+            
+            # Create video record in database
+            video_data = {
+                "id": video_id,
+                "project_id": project_id,
+                "user_id": user["id"],
+                "format": format_type,
+                "status": "completed",
+                "file_url": f"/uploads/videos/{output_filename}",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.project_videos.insert_one(video_data)
+            
+            return {
+                "status": "success", 
+                "video_id": video_id, 
+                "file_url": f"/uploads/videos/{output_filename}",
+                "message": "Video generated successfully"
+            }
+            
+    except Exception as e:
+        print(f"Video generation error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
 
