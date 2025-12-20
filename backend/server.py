@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
 import os
 import httpx
 import jwt
@@ -13,10 +13,19 @@ from bson import ObjectId
 import shutil
 from pathlib import Path
 
+# Stripe integration
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+
 # Load environment variables
 load_dotenv()
 
 app = FastAPI(title="ReelsEstate API")
+
+# Subscription plans - FIXED PRICES (never accept from frontend)
+SUBSCRIPTION_PLANS = {
+    "starter": {"name": "Starter", "price": 29.00, "currency": "eur"},
+    "premium": {"name": "Premium", "price": 79.00, "currency": "eur"}
+}
 
 # Create uploads directory if it doesn't exist
 UPLOAD_DIR = Path("/app/uploads")
