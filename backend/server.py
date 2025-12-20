@@ -1984,7 +1984,7 @@ async def stripe_webhook(request: Request):
 
 @app.get("/api/stripe/plans")
 async def get_subscription_plans():
-    """Get available subscription plans"""
+    """Get available subscription plans with features"""
     return {
         "plans": [
             {
@@ -1992,8 +1992,10 @@ async def get_subscription_plans():
                 "name": "Basic",
                 "price": 19.99,
                 "currency": "EUR",
+                "max_quality": "sd",
                 "features": [
                     "5 video creaties per maand",
+                    "SD kwaliteit (480p)",
                     "Basis templates",
                     "Email support"
                 ]
@@ -2003,8 +2005,10 @@ async def get_subscription_plans():
                 "name": "Professional",
                 "price": 39.99,
                 "currency": "EUR",
+                "max_quality": "hd",
                 "features": [
                     "20 video creaties per maand",
+                    "HD kwaliteit (720p)",
                     "Alle templates",
                     "Priority support",
                     "Custom branding"
@@ -2015,13 +2019,14 @@ async def get_subscription_plans():
                 "name": "Enterprise",
                 "price": 99.99,
                 "currency": "EUR",
+                "max_quality": "fullhd",
                 "features": [
                     "Onbeperkt video creaties",
+                    "Full HD kwaliteit (1080p)",
                     "Alle premium templates",
                     "24/7 Priority support",
                     "Custom branding",
-                    "Analytics dashboard",
-                    "Dedicated account manager"
+                    "Analytics dashboard"
                 ]
             },
             {
@@ -2029,8 +2034,10 @@ async def get_subscription_plans():
                 "name": "AI Caption",
                 "price": 199.99,
                 "currency": "EUR",
+                "max_quality": "4k",
                 "features": [
                     "Alles in Enterprise",
+                    "4K Ultra HD kwaliteit (2160p)",
                     "AI-gegenereerde captions",
                     "Automatische ondertiteling",
                     "Multi-language support",
@@ -2038,6 +2045,38 @@ async def get_subscription_plans():
                 ]
             }
         ]
+    }
+
+# Endpoint to get user's allowed qualities based on their plan
+@app.get("/api/user/allowed-qualities")
+async def get_allowed_qualities(request: Request, authorization: str = Header(None)):
+    """Get the quality options allowed for the current user's plan"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    user_plan = user_data.get("plan", "Basic") if user_data else "Basic"
+    max_quality = get_max_quality_for_plan(user_plan)
+    max_level = QUALITY_LEVELS.get(max_quality, 1)
+    
+    all_qualities = [
+        {"value": "sd", "label": "SD (480p)", "description": "Snel, klein bestand", "level": 1},
+        {"value": "hd", "label": "HD (720p)", "description": "Goede kwaliteit", "level": 2},
+        {"value": "fullhd", "label": "Full HD (1080p)", "description": "Hoge kwaliteit", "level": 3},
+        {"value": "4k", "label": "4K (2160p)", "description": "Ultra HD, groot bestand", "level": 4}
+    ]
+    
+    allowed_qualities = []
+    for q in all_qualities:
+        q_copy = q.copy()
+        q_copy["allowed"] = q["level"] <= max_level
+        q_copy["requires_upgrade"] = not q_copy["allowed"]
+        allowed_qualities.append(q_copy)
+    
+    return {
+        "user_plan": user_plan,
+        "max_quality": max_quality,
+        "qualities": allowed_qualities
     }
 
 if __name__ == "__main__":
