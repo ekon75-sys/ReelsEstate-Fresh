@@ -2946,7 +2946,7 @@ async def generate_project_video(
             # Store in GridFS
             file_id = await fs.upload_from_stream(
                 f"video_{video_id}.mp4",
-                io.BytesIO(video_bytes),
+                io_module.BytesIO(video_bytes),
                 metadata={
                     "video_id": video_id,
                     "project_id": project_id,
