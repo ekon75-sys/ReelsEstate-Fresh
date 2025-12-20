@@ -175,13 +175,13 @@ const SubscriptionSettings = () => {
       )}
 
       {/* Available Plans */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {plans.map((plan) => (
           <Card 
             key={plan.id} 
-            className={`relative ${plan.id === 'premium' ? 'border-brand-orange-500 border-2' : ''}`}
+            className={`relative ${plan.id === 'professional' ? 'border-brand-orange-500 border-2' : ''}`}
           >
-            {plan.id === 'premium' && (
+            {plan.id === 'professional' && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                 <span className="bg-brand-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
                   Most Popular
@@ -189,7 +189,7 @@ const SubscriptionSettings = () => {
               </div>
             )}
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex flex-col gap-2">
                 <span>{plan.name}</span>
                 <span className="text-2xl font-bold">€{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></span>
               </CardTitle>
@@ -199,14 +199,14 @@ const SubscriptionSettings = () => {
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600">{feature}</span>
+                    <span className="text-gray-600 text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
               
               <Button 
-                className={`w-full ${plan.id === 'premium' ? 'bg-brand-orange-500 hover:bg-brand-orange-600' : ''}`}
-                variant={plan.id === 'premium' ? 'default' : 'outline'}
+                className={`w-full ${plan.id === 'professional' ? 'bg-brand-orange-500 hover:bg-brand-orange-600' : ''}`}
+                variant={plan.id === 'professional' ? 'default' : 'outline'}
                 onClick={() => handleSubscribe(plan.id)}
                 disabled={loading || (subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active')}
               >
@@ -217,7 +217,7 @@ const SubscriptionSettings = () => {
                 )}
                 {subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active' 
                   ? 'Current Plan' 
-                  : `Subscribe to ${plan.name}`}
+                  : `Subscribe`}
               </Button>
             </CardContent>
           </Card>
