@@ -9,10 +9,6 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const AgentsSettings = () => {
   const [agents, setAgents] = useState([]);
@@ -30,7 +26,7 @@ const AgentsSettings = () => {
   const loadAgents = async () => {
     try {
       const response = await axios.get(`${API_URL}/agents`, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       setAgents(response.data);
     } catch (error) {
@@ -56,7 +52,7 @@ const AgentsSettings = () => {
         const photoFormData = new FormData();
         photoFormData.append('file', photoFile);
         const uploadResponse = await axios.post(`${API_URL}/upload/agent-photo`, photoFormData, {
-          headers: getAuthHeaders()
+          withCredentials: true
         });
         photo_url = uploadResponse.data.photo_url;
       }
@@ -64,13 +60,13 @@ const AgentsSettings = () => {
       if (editingAgent) {
         // Update existing agent
         await axios.put(`${API_URL}/agents/${editingAgent.id}`, { ...formData, photo_url }, {
-          headers: getAuthHeaders()
+          withCredentials: true
         });
         toast.success('Agent updated!');
       } else {
         // Add new agent
         await axios.post(`${API_URL}/agents`, { ...formData, photo_url }, {
-          headers: getAuthHeaders()
+          withCredentials: true
         });
         toast.success('Agent added!');
       }
@@ -104,7 +100,7 @@ const AgentsSettings = () => {
 
     try {
       await axios.delete(`${API_URL}/agents/${agentId}`, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Agent deleted');
       await loadAgents();

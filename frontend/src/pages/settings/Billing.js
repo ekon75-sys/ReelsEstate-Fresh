@@ -10,10 +10,6 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const BillingSettings = () => {
   const [loading, setLoading] = useState(false);
@@ -41,7 +37,7 @@ const BillingSettings = () => {
   const loadBilling = async () => {
     try {
       const response = await axios.get(`${API_URL}/billing`, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       if (response.data && response.data.vat_number) {
         setFormData(response.data);
@@ -58,7 +54,7 @@ const BillingSettings = () => {
   const loadBusinessInfo = async () => {
     try {
       const response = await axios.get(`${API_URL}/business-info`, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       if (response.data && response.data.company_name) {
         setBusinessInfo(response.data);
@@ -77,7 +73,7 @@ const BillingSettings = () => {
         ...formData,
         saved_cards: JSON.stringify(savedCards)
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Billing information updated!');
     } catch (error) {
@@ -115,7 +111,7 @@ const BillingSettings = () => {
         saved_cards: JSON.stringify(updatedCards),
         payment_method: `${newCard.brand} ending in ${newCard.last4}`
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Card added successfully!');
       setShowAddCard(false);
@@ -145,7 +141,7 @@ const BillingSettings = () => {
         saved_cards: JSON.stringify(updatedCards),
         payment_method: `${defaultCard.brand} ending in ${defaultCard.last4}`
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Default card updated!');
     } catch (error) {
@@ -174,7 +170,7 @@ const BillingSettings = () => {
         saved_cards: JSON.stringify(updatedCards),
         payment_method: updatedCards.length > 0 ? `${updatedCards[0].brand} ending in ${updatedCards[0].last4}` : ''
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Card removed!');
     } catch (error) {

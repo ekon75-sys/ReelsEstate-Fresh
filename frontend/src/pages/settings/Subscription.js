@@ -8,10 +8,6 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
 
 const SubscriptionSettings = () => {
   const [subscription, setSubscription] = useState(null);
@@ -27,7 +23,7 @@ const SubscriptionSettings = () => {
   const loadSubscription = async () => {
     try {
       const response = await axios.get(`${API_URL}/subscription`, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       setSubscription(response.data);
     } catch (error) {
@@ -41,7 +37,7 @@ const SubscriptionSettings = () => {
     setLoading(true);
     try {
       await axios.post(`${API_URL}/subscription/cancel`, {}, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
       toast.success('Subscription cancelled');
       await loadSubscription();
@@ -64,7 +60,7 @@ const SubscriptionSettings = () => {
         code: discountCode.trim(),
         plan_price: planPrice
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
 
       if (response.data.valid) {
@@ -92,7 +88,7 @@ const SubscriptionSettings = () => {
           code: discountCode.trim(),
           plan_price: plan.price
         }, {
-          headers: getAuthHeaders()
+          withCredentials: true
         });
         finalPrice = appliedDiscount.final_price;
       }
@@ -102,7 +98,7 @@ const SubscriptionSettings = () => {
         plan_name: plan.name,
         plan_price: finalPrice
       }, {
-        headers: getAuthHeaders()
+        withCredentials: true
       });
 
       toast.success(`Successfully subscribed to ${plan.name} plan!`);
