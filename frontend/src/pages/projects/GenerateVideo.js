@@ -488,7 +488,7 @@ const GenerateVideo = () => {
                       <CardContent className="p-4">
                         <div className="aspect-video bg-black rounded mb-3">
                           <video
-                            src={process.env.REACT_APP_BACKEND_URL + video.file_url}
+                            src={video.file_url?.startsWith('data:') ? video.file_url : process.env.REACT_APP_BACKEND_URL + video.file_url}
                             controls
                             className="w-full h-full"
                           />
