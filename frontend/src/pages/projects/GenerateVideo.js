@@ -86,10 +86,7 @@ const GenerateVideo = () => {
   const handleConnectYouTube = async () => {
     setConnectingYouTube(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/youtube/authorize`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/youtube/authorize`, { withCredentials: true });
       
       // Open OAuth URL in a new window
       const authWindow = window.open(
@@ -101,9 +98,7 @@ const GenerateVideo = () => {
       // Poll for connection status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await axios.get(`${API_URL}/auth/youtube/status`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const statusResponse = await axios.get(`${API_URL}/auth/youtube/status`, { withCredentials: true });
           
           if (statusResponse.data.connected) {
             setYoutubeConnected(true);
@@ -135,10 +130,7 @@ const GenerateVideo = () => {
     setConnectingInstagram(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/instagram/authorize`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/instagram/authorize`, { withCredentials: true });
       
       // Open OAuth popup
       const authWindow = window.open(response.data.auth_url, 'Instagram Authorization', 'width=600,height=700');
@@ -146,9 +138,7 @@ const GenerateVideo = () => {
       // Poll for connection status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await axios.get(`${API_URL}/auth/instagram/status`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const statusResponse = await axios.get(`${API_URL}/auth/instagram/status`, { withCredentials: true });
           
           if (statusResponse.data.connected) {
             setInstagramConnected(true);
@@ -180,10 +170,7 @@ const GenerateVideo = () => {
     setConnectingFacebook(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/facebook/authorize`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/facebook/authorize`, { withCredentials: true });
       
       // Open OAuth popup
       const authWindow = window.open(response.data.auth_url, 'Facebook Authorization', 'width=600,height=700');
@@ -191,9 +178,7 @@ const GenerateVideo = () => {
       // Poll for connection status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await axios.get(`${API_URL}/auth/facebook/status`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const statusResponse = await axios.get(`${API_URL}/auth/facebook/status`, { withCredentials: true });
           
           if (statusResponse.data.connected) {
             setFacebookConnected(true);
@@ -225,10 +210,7 @@ const GenerateVideo = () => {
     setConnectingLinkedin(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/linkedin/authorize`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/linkedin/authorize`, { withCredentials: true });
       
       // Open OAuth popup
       const authWindow = window.open(response.data.auth_url, 'LinkedIn Authorization', 'width=600,height=700');
@@ -236,9 +218,7 @@ const GenerateVideo = () => {
       // Poll for connection status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await axios.get(`${API_URL}/auth/linkedin/status`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const statusResponse = await axios.get(`${API_URL}/auth/linkedin/status`, { withCredentials: true });
           
           if (statusResponse.data.connected) {
             setLinkedinConnected(true);
