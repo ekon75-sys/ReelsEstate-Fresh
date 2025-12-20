@@ -73,11 +73,31 @@ const GenerateVideo = () => {
   useEffect(() => {
     loadProject();
     loadVideos();
+    loadAllowedQualities();
     checkYouTubeConnection();
     checkInstagramConnection();
     checkFacebookConnection();
     checkLinkedInConnection();
   }, [projectId]);
+
+  const loadAllowedQualities = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/user/allowed-qualities`, { withCredentials: true });
+      setAllowedQualities(response.data.qualities);
+      setUserPlan(response.data.user_plan);
+      // Set default quality to highest allowed
+      const highestAllowed = response.data.qualities.filter(q => q.allowed).pop();
+      if (highestAllowed) {
+        setSelectedQuality(highestAllowed.value);
+      }
+    } catch (error) {
+      console.error('Failed to load allowed qualities:', error);
+      // Fallback to basic qualities
+      setAllowedQualities([
+        { value: 'sd', label: 'SD (480p)', description: 'Snel, klein bestand', allowed: true }
+      ]);
+    }
+  };
 
   const checkYouTubeConnection = async () => {
     try {
