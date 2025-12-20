@@ -2819,7 +2819,7 @@ async def generate_project_video(
                     try:
                         header, photo_b64 = agent_photo_url.split(",", 1)
                         photo_data = base64.b64decode(photo_b64)
-                        agent_photo_img = Image.open(io.BytesIO(photo_data)).convert("RGBA")
+                        agent_photo_img = Image.open(io_module.BytesIO(photo_data)).convert("RGBA")
                     except:
                         agent_photo_img = None
             
