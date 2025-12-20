@@ -1558,7 +1558,7 @@ async def get_billing(request: Request, authorization: str = Header(None)):
     }
 
 @app.post("/api/billing")
-async def save_billing(billing: BillingRequest, authorization: str = Header(None)):
+async def save_billing(request: Request, billing: BillingRequest, authorization: str = Header(None)):
     """Save user's billing information"""
     user = await get_current_user(request, authorization)
     db = get_database()
