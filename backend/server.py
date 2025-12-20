@@ -2369,18 +2369,19 @@ async def generate_project_video(
     format_type: str = "16:9",
     authorization: str = Header(None)
 ):
-    """Generate a real video for a project using moviepy"""
+    """Generate a professional video with intro, Ken Burns effect, and outro"""
     import base64
     import tempfile
     import os as os_module
-    from moviepy import ImageClip, concatenate_videoclips
-    from PIL import Image
+    import random
+    from moviepy import ImageClip, concatenate_videoclips, TextClip, CompositeVideoClip, ColorClip
+    from PIL import Image, ImageDraw, ImageFont
     import io
     
     user = await get_current_user(request, authorization)
     db = get_database()
     
-    # Verify project belongs to user
+    # Get project with all details
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -2389,9 +2390,24 @@ async def generate_project_video(
     if not photos or len(photos) == 0:
         raise HTTPException(status_code=400, detail="Project has no photos")
     
+    # Get branding info for intro/outro
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    branding = user_data.get("branding", {}) if user_data else {}
+    main_color = branding.get("main_color", "#FF6B35")
+    
+    # Get agent info if configured
+    agent_id = project.get("agent_id")
+    agent = None
+    if agent_id and user_data:
+        agents = user_data.get("agents", [])
+        for a in agents:
+            if a.get("id") == agent_id:
+                agent = a
+                break
+    
     # Determine video dimensions based on format
     if format_type == "16:9":
-        width, height = 1280, 720  # Use 720p for faster processing
+        width, height = 1280, 720
     elif format_type == "9:16":
         width, height = 720, 1280
     elif format_type == "1:1":
@@ -2400,70 +2416,169 @@ async def generate_project_video(
         width, height = 1280, 720
     
     try:
-        # Create temp directory for processing
         with tempfile.TemporaryDirectory() as temp_dir:
-            clips = []
-            duration_per_photo = 3  # seconds per photo
+            all_clips = []
+            duration_per_photo = 4  # seconds per photo
+            
+            # === CREATE INTRO ===
+            intro_img = Image.new('RGB', (width, height), color=main_color)
+            draw = ImageDraw.Draw(intro_img)
+            
+            # Add title text
+            title = project.get("title", "Property Tour")
+            
+            # Calculate text position (center)
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 60)
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+            except:
+                font_large = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+            
+            # Draw title
+            bbox = draw.textbbox((0, 0), title, font=font_large)
+            text_width = bbox[2] - bbox[0]
+            x = (width - text_width) // 2
+            y = height // 2 - 50
+            draw.text((x, y), title, fill="white", font=font_large)
+            
+            # Draw subtitle if banner exists
+            left_banner = project.get("left_banner", "")
+            if left_banner and left_banner != "No Banner":
+                bbox2 = draw.textbbox((0, 0), left_banner, font=font_small)
+                text_width2 = bbox2[2] - bbox2[0]
+                x2 = (width - text_width2) // 2
+                draw.text((x2, y + 80), left_banner, fill="white", font=font_small)
+            
+            intro_path = os_module.path.join(temp_dir, "intro.jpg")
+            intro_img.save(intro_path, "JPEG", quality=95)
+            intro_clip = ImageClip(intro_path, duration=3)
+            all_clips.append(intro_clip)
+            
+            # === PROCESS PHOTOS WITH KEN BURNS EFFECT ===
+            def create_ken_burns_clip(img_path, duration, width, height, effect_type):
+                """Create a clip with Ken Burns (pan/zoom) effect"""
+                clip = ImageClip(img_path, duration=duration)
+                
+                # Random zoom direction
+                if effect_type == 0:
+                    # Zoom in from center
+                    clip = clip.resized(lambda t: 1 + 0.1 * t / duration)
+                elif effect_type == 1:
+                    # Zoom out from center
+                    clip = clip.resized(lambda t: 1.1 - 0.1 * t / duration)
+                elif effect_type == 2:
+                    # Slight zoom in
+                    clip = clip.resized(lambda t: 1 + 0.05 * t / duration)
+                else:
+                    # Slight zoom out
+                    clip = clip.resized(lambda t: 1.05 - 0.05 * t / duration)
+                
+                # Center the clip
+                clip = clip.with_position('center')
+                
+                # Create a container clip
+                container = ColorClip(size=(width, height), color=(0, 0, 0), duration=duration)
+                final = CompositeVideoClip([container, clip], size=(width, height))
+                
+                return final
             
             for i, photo in enumerate(photos):
-                # Get the photo URL (either enhanced or original)
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
                 
-                if not photo_url:
+                if not photo_url or not photo_url.startswith("data:"):
                     continue
                 
-                # Handle base64 encoded images
-                if photo_url.startswith("data:"):
-                    # Extract base64 data
-                    header, base64_data = photo_url.split(",", 1)
-                    image_data = base64.b64decode(base64_data)
-                    
-                    # Save to temp file
-                    temp_image_path = os_module.path.join(temp_dir, f"photo_{i}.jpg")
-                    with open(temp_image_path, "wb") as f:
-                        f.write(image_data)
-                    
-                    # Open and resize image to fit video dimensions
-                    img = Image.open(temp_image_path)
-                    img = img.convert("RGB")
-                    
-                    # Calculate resize to fill frame (crop to fit)
-                    img_ratio = img.width / img.height
-                    target_ratio = width / height
-                    
-                    if img_ratio > target_ratio:
-                        new_height = img.height
-                        new_width = int(new_height * target_ratio)
-                        left = (img.width - new_width) // 2
-                        img = img.crop((left, 0, left + new_width, new_height))
-                    else:
-                        new_width = img.width
-                        new_height = int(new_width / target_ratio)
-                        top = (img.height - new_height) // 2
-                        img = img.crop((0, top, new_width, top + new_height))
-                    
-                    # Resize to target dimensions
-                    img = img.resize((width, height), Image.LANCZOS)
-                    
-                    # Save resized image
-                    resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
-                    img.save(resized_path, "JPEG", quality=90)
-                    
-                    # Create video clip from image
-                    clip = ImageClip(resized_path, duration=duration_per_photo)
-                    clips.append(clip)
+                # Extract and save image
+                header, base64_data = photo_url.split(",", 1)
+                image_data = base64.b64decode(base64_data)
+                
+                temp_image_path = os_module.path.join(temp_dir, f"photo_{i}.jpg")
+                with open(temp_image_path, "wb") as f:
+                    f.write(image_data)
+                
+                # Open and resize image
+                img = Image.open(temp_image_path)
+                img = img.convert("RGB")
+                
+                # Resize to slightly larger than video (for zoom effect)
+                zoom_size = (int(width * 1.2), int(height * 1.2))
+                
+                # Calculate crop to fit
+                img_ratio = img.width / img.height
+                target_ratio = zoom_size[0] / zoom_size[1]
+                
+                if img_ratio > target_ratio:
+                    new_height = img.height
+                    new_width = int(new_height * target_ratio)
+                    left = (img.width - new_width) // 2
+                    img = img.crop((left, 0, left + new_width, new_height))
+                else:
+                    new_width = img.width
+                    new_height = int(new_width / target_ratio)
+                    top = (img.height - new_height) // 2
+                    img = img.crop((0, top, new_width, top + new_height))
+                
+                img = img.resize(zoom_size, Image.LANCZOS)
+                
+                resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
+                img.save(resized_path, "JPEG", quality=95)
+                
+                # Create clip with Ken Burns effect
+                effect_type = i % 4  # Alternate between different effects
+                photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
+                all_clips.append(photo_clip)
             
-            if not clips:
-                raise HTTPException(status_code=400, detail="No valid photos to process")
+            # === CREATE OUTRO ===
+            outro_img = Image.new('RGB', (width, height), color=main_color)
+            draw = ImageDraw.Draw(outro_img)
             
-            # Concatenate all clips
-            final_clip = concatenate_videoclips(clips, method="compose")
+            # Add agent info or generic outro
+            if agent:
+                agent_name = agent.get("name", "")
+                agent_phone = agent.get("phone", "")
+                agent_email = agent.get("email", "")
+                
+                y_pos = height // 2 - 80
+                
+                if agent_name:
+                    bbox = draw.textbbox((0, 0), agent_name, font=font_large)
+                    x = (width - (bbox[2] - bbox[0])) // 2
+                    draw.text((x, y_pos), agent_name, fill="white", font=font_large)
+                    y_pos += 70
+                
+                if agent_phone:
+                    bbox = draw.textbbox((0, 0), agent_phone, font=font_small)
+                    x = (width - (bbox[2] - bbox[0])) // 2
+                    draw.text((x, y_pos), agent_phone, fill="white", font=font_small)
+                    y_pos += 40
+                
+                if agent_email:
+                    bbox = draw.textbbox((0, 0), agent_email, font=font_small)
+                    x = (width - (bbox[2] - bbox[0])) // 2
+                    draw.text((x, y_pos), agent_email, fill="white", font=font_small)
+            else:
+                # Generic outro
+                text = "Thank you for watching"
+                bbox = draw.textbbox((0, 0), text, font=font_large)
+                x = (width - (bbox[2] - bbox[0])) // 2
+                draw.text((x, height // 2 - 30), text, fill="white", font=font_large)
             
-            # Generate unique filename
+            outro_path = os_module.path.join(temp_dir, "outro.jpg")
+            outro_img.save(outro_path, "JPEG", quality=95)
+            outro_clip = ImageClip(outro_path, duration=3)
+            all_clips.append(outro_clip)
+            
+            # === CONCATENATE ALL CLIPS ===
+            if len(all_clips) < 2:
+                raise HTTPException(status_code=400, detail="Not enough content to generate video")
+            
+            final_clip = concatenate_videoclips(all_clips, method="compose")
+            
+            # Generate output
             video_id = str(ObjectId())
             output_path = os_module.path.join(temp_dir, f"output_{video_id}.mp4")
             
-            # Write video file
             final_clip.write_videofile(
                 output_path,
                 fps=24,
@@ -2472,25 +2587,25 @@ async def generate_project_video(
                 preset="ultrafast"
             )
             
-            # Close clips to free memory
-            for clip in clips:
+            # Close all clips
+            for clip in all_clips:
                 clip.close()
             final_clip.close()
             
-            # Read the video file and convert to base64 for storage
+            # Read and convert to base64
             with open(output_path, "rb") as f:
                 video_bytes = f.read()
             video_base64 = base64.b64encode(video_bytes).decode('utf-8')
             video_data_url = f"data:video/mp4;base64,{video_base64}"
             
-            # Create video record in database with base64 data
+            # Save to database
             video_data = {
                 "id": video_id,
                 "project_id": project_id,
                 "user_id": user["id"],
                 "format": format_type,
                 "status": "completed",
-                "file_url": video_data_url,  # Store as base64 data URL
+                "file_url": video_data_url,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             
