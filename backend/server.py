@@ -343,7 +343,7 @@ async def emergent_session(session_data: EmergentSessionRequest, response: Respo
 
 # Auth/me endpoint - verify session and get user
 @app.get("/api/auth/me")
-async def auth_me(request: Request, request: Request, authorization: str = Header(None)):
+async def auth_me(request: Request, authorization: str = Header(None)):
     """Get current user from session cookie or Authorization header"""
     db = get_database()
     
