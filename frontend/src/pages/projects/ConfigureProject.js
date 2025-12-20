@@ -62,7 +62,7 @@ const ConfigureProject = () => {
 
     setLoading(true);
     try {
-      await axios.put(`${API_URL}/projects/${projectId}`, config);
+      await axios.put(`${API_URL}/projects/${projectId}`, config, { withCredentials: true });
       toast.success('Configuration saved!');
       navigate(`/projects/${projectId}/generate`);
     } catch (error) {
