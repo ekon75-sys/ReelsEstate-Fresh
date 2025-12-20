@@ -556,7 +556,7 @@ async def get_business_info(request: Request, authorization: str = Header(None))
     return business_info
 
 @app.post("/api/business-info")
-async def save_business_info(business_info: BusinessInfoRequest, request: Request, authorization: str = Header(None)):
+async def save_business_info(business_info: BusinessInfoRequest):
     """Save business information"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -573,7 +573,7 @@ async def save_business_info(business_info: BusinessInfoRequest, request: Reques
     return {"status": "success", "message": "Business information saved"}
 
 @app.put("/api/onboarding/progress")
-async def update_onboarding_progress(progress: OnboardingProgressRequest, request: Request, authorization: str = Header(None)):
+async def update_onboarding_progress(progress: OnboardingProgressRequest):
     """Update onboarding progress"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -651,7 +651,7 @@ class BrandingRequest(BaseModel):
     currency: str = "€"
 
 @app.post("/api/branding")
-async def save_branding(branding: BrandingRequest, request: Request, authorization: str = Header(None)):
+async def save_branding(branding: BrandingRequest):
     """Save user branding preferences"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -885,7 +885,7 @@ class DisconnectRequest(BaseModel):
     platform: str
 
 @app.post("/api/social-media/disconnect")
-async def disconnect_social_media(request: DisconnectRequest, request: Request, authorization: str = Header(None)):
+async def disconnect_social_media(request: DisconnectRequest):
     """Disconnect a social media platform"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -954,7 +954,7 @@ async def get_tiktok_status(request: Request, authorization: str = Header(None))
     return {"connected": user.get("tiktok_connected", False)}
 
 @app.delete("/api/auth/{platform}/disconnect")
-async def disconnect_platform(platform: str, request: Request, authorization: str = Header(None)):
+async def disconnect_platform(platform: str):
     """Disconnect a social media platform"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -992,7 +992,7 @@ async def disconnect_platform(platform: str, request: Request, authorization: st
     return {"status": "success", "message": f"{platform} disconnected"}
 
 @app.get("/api/auth/{platform}/authorize")
-async def get_platform_auth_url(platform: str, request: Request, authorization: str = Header(None)):
+async def get_platform_auth_url(platform: str):
     """Get OAuth authorization URL for a platform"""
     user = await get_current_user_from_request(request)
     
@@ -1371,7 +1371,7 @@ async def get_linkedin_pages(request: Request, authorization: str = Header(None)
     }
 
 @app.post("/api/auth/linkedin/select-page")
-async def select_linkedin_page(request: dict, request: Request, authorization: str = Header(None)):
+async def select_linkedin_page(request: dict):
     """Select which LinkedIn page/profile to post to"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1399,7 +1399,7 @@ async def get_agents(request: Request, authorization: str = Header(None)):
     return agents
 
 @app.post("/api/agents")
-async def add_agent(agent: dict, request: Request, authorization: str = Header(None)):
+async def add_agent(agent: dict):
     """Add a new agent"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1419,7 +1419,7 @@ async def add_agent(agent: dict, request: Request, authorization: str = Header(N
     return {"status": "success", "message": "Agent added"}
 
 @app.put("/api/agents/{agent_id}")
-async def update_agent(agent_id: str, agent: dict, request: Request, authorization: str = Header(None)):
+async def update_agent(agent_id: str, agent: dict):
     """Update an existing agent"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1445,7 +1445,7 @@ async def update_agent(agent_id: str, agent: dict, request: Request, authorizati
     return {"status": "success", "message": "Agent updated"}
 
 @app.delete("/api/agents/{agent_id}")
-async def delete_agent(agent_id: str, request: Request, authorization: str = Header(None)):
+async def delete_agent(agent_id: str):
     """Delete an agent"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1485,7 +1485,7 @@ class SubscriptionRequest(BaseModel):
     plan_price: float
 
 @app.post("/api/subscription")
-async def activate_subscription(subscription: SubscriptionRequest, request: Request, authorization: str = Header(None)):
+async def activate_subscription(subscription: SubscriptionRequest):
     """Activate a subscription plan"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1551,7 +1551,7 @@ async def get_billing(request: Request, authorization: str = Header(None)):
     }
 
 @app.post("/api/billing")
-async def save_billing(billing: BillingRequest, request: Request, authorization: str = Header(None)):
+async def save_billing(billing: BillingRequest):
     """Save user's billing information"""
     user = await get_current_user_from_request(request)
     db = get_database()
@@ -1590,7 +1590,7 @@ class DiscountValidateRequest(BaseModel):
     plan_price: float
 
 @app.post("/api/discount-codes/validate")
-async def validate_discount_code(request: DiscountValidateRequest, request: Request, authorization: str = Header(None)):
+async def validate_discount_code(request: DiscountValidateRequest):
     """Validate a discount code"""
     user = await get_current_user_from_request(request)
     
@@ -1622,7 +1622,7 @@ async def validate_discount_code(request: DiscountValidateRequest, request: Requ
     }
 
 @app.post("/api/discount-codes/apply")
-async def apply_discount_code(request: DiscountValidateRequest, request: Request, authorization: str = Header(None)):
+async def apply_discount_code(request: DiscountValidateRequest):
     """Apply a discount code to user's account"""
     user = await get_current_user_from_request(request)
     db = get_database()
