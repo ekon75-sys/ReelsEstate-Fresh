@@ -1,5 +1,5 @@
 import '@/App.css';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
-import GoogleCallback from '@/pages/GoogleCallback';
+import AuthCallback from '@/pages/AuthCallback';
 import FacebookCallback from '@/pages/FacebookCallback';
 import YouTubeCallback from '@/pages/YouTubeCallback';
 import TikTokCallback from '@/pages/TikTokCallback';
@@ -42,22 +42,27 @@ import GenerateVideo from '@/pages/projects/GenerateVideo';
 import PhotoEnhancementPage from '@/pages/PhotoEnhancementPage';
 import AdminPanel from '@/pages/AdminPanel';
 
-function App() {
+// Auth Router - Check for session_id in URL fragment before routing
+function AppRouter() {
+  const location = useLocation();
+  
+  // Check URL fragment for session_id (from Emergent Auth)
+  if (location.hash?.includes('session_id=')) {
+    return <AuthCallback />;
+  }
+  
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/auth/google/callback" element={<GoogleCallback />} />
-          <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
-          <Route path="/auth/youtube/callback" element={<YouTubeCallback />} />
-          <Route path="/auth/tiktok/callback" element={<TikTokCallback />} />
-          <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
-          <Route path="/data-deletion" element={<DataDeletion />} />
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
+      <Route path="/auth/youtube/callback" element={<YouTubeCallback />} />
+      <Route path="/auth/tiktok/callback" element={<TikTokCallback />} />
+      <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
+      <Route path="/data-deletion" element={<DataDeletion />} />
           
           {/* Protected Onboarding Routes */}
           <Route path="/onboarding/step-1" element={<ProtectedRoute><OnboardingStep1 /></ProtectedRoute>} />
