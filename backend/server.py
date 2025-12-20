@@ -2550,6 +2550,19 @@ async def generate_project_video(
     db = get_database()
     fs = get_gridfs_bucket()
     
+    # Get user's subscription plan to check quality allowance
+    user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    user_plan = user_data.get("plan", "Basic") if user_data else "Basic"
+    
+    # Validate quality against user's plan
+    if not is_quality_allowed(user_plan, quality):
+        max_quality = get_max_quality_for_plan(user_plan)
+        quality_names = {"sd": "SD (480p)", "hd": "HD (720p)", "fullhd": "Full HD (1080p)", "4k": "4K (2160p)"}
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Je {user_plan} plan staat maximaal {quality_names.get(max_quality, 'SD')} toe. Upgrade je plan voor hogere kwaliteit."
+        )
+    
     # Get project with all details
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
