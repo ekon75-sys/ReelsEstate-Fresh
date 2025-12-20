@@ -387,7 +387,7 @@ const PhotoUpload = () => {
 
   const handleUpdateCaption = async (photoId, caption) => {
     try {
-      await axios.put(`${API_URL}/projects/${projectId}/photos/${photoId}`, { caption });
+      await axios.put(`${API_URL}/projects/${projectId}/photos/${photoId}`, { caption }, { withCredentials: true });
     } catch (error) {
       console.error('Failed to update caption');
     }
