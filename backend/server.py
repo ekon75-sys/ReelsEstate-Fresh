@@ -48,6 +48,13 @@ class GoogleAuthRequest(BaseModel):
     code: str
     redirect_uri: Optional[str] = None
 
+class EmergentSessionRequest(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    session_token: str
+
 class UserResponse(BaseModel):
     id: str
     email: str
