@@ -21,9 +21,10 @@ const OnboardingStep2 = () => {
 
   const loadBranding = async () => {
     try {
-      const response = await axios.get(`${API_URL}/branding`);
+      const response = await axios.get(`${API_URL}/branding`, { withCredentials: true });
       if (response.data.logo_url) {
-        setLogoPreview(process.env.REACT_APP_BACKEND_URL + response.data.logo_url);
+        const logoUrl = response.data.logo_url.startsWith('data:') ? response.data.logo_url : process.env.REACT_APP_BACKEND_URL + response.data.logo_url;
+        setLogoPreview(logoUrl);
       }
     } catch (error) {
       console.error('Failed to load branding:', error);
@@ -50,14 +51,14 @@ const OnboardingStep2 = () => {
       if (logo) {
         const formData = new FormData();
         formData.append('file', logo);
-        await axios.post(`${API_URL}/upload/logo`, formData);
+        await axios.post(`${API_URL}/upload/logo`, formData, { withCredentials: true });
       }
 
       // Update progress
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 3,
         completed_steps: {}
-      });
+      }, { withCredentials: true });
 
       toast.success('Logo uploaded successfully!');
       navigate('/onboarding/step-3');
