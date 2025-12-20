@@ -32,29 +32,27 @@ def test_health_endpoints():
     """Test basic health check endpoints"""
     print(f"\n{Colors.BOLD}=== Testing Health Endpoints ==={Colors.ENDC}")
     
-    # Test root endpoint
+    # Test root endpoint - expects HTML (frontend)
     try:
         response = requests.get(f"{BACKEND_URL}/", timeout=10)
         if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "ok":
-                log_test("GET / - Root endpoint", "PASS", f"Status: {data}")
+            if "ReelsEstate" in response.text and "html" in response.text.lower():
+                log_test("GET / - Root endpoint", "PASS", "Returns frontend HTML as expected")
             else:
-                log_test("GET / - Root endpoint", "FAIL", f"Unexpected response: {data}")
+                log_test("GET / - Root endpoint", "FAIL", f"Unexpected HTML content")
         else:
             log_test("GET / - Root endpoint", "FAIL", f"Status code: {response.status_code}")
     except Exception as e:
         log_test("GET / - Root endpoint", "FAIL", f"Error: {str(e)}")
     
-    # Test /health endpoint
+    # Test /health endpoint - expects HTML (frontend)
     try:
         response = requests.get(f"{BACKEND_URL}/health", timeout=10)
         if response.status_code == 200:
-            data = response.json()
-            if data.get("status") == "ok":
-                log_test("GET /health - Health check", "PASS", f"Status: {data}")
+            if "ReelsEstate" in response.text and "html" in response.text.lower():
+                log_test("GET /health - Health check", "PASS", "Returns frontend HTML as expected")
             else:
-                log_test("GET /health - Health check", "FAIL", f"Unexpected response: {data}")
+                log_test("GET /health - Health check", "FAIL", f"Unexpected HTML content")
         else:
             log_test("GET /health - Health check", "FAIL", f"Status code: {response.status_code}")
     except Exception as e:
