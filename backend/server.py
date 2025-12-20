@@ -2373,7 +2373,7 @@ async def generate_project_video(
     import base64
     import tempfile
     import os as os_module
-    from moviepy import ImageClip, concatenate_videoclips, CompositeVideoClip, AudioFileClip
+    from moviepy import ImageClip, concatenate_videoclips
     from PIL import Image
     import io
     
@@ -2391,13 +2391,13 @@ async def generate_project_video(
     
     # Determine video dimensions based on format
     if format_type == "16:9":
-        width, height = 1920, 1080
+        width, height = 1280, 720  # Use 720p for faster processing
     elif format_type == "9:16":
-        width, height = 1080, 1920
+        width, height = 720, 1280
     elif format_type == "1:1":
-        width, height = 1080, 1080
+        width, height = 720, 720
     else:
-        width, height = 1920, 1080
+        width, height = 1280, 720
     
     try:
         # Create temp directory for processing
@@ -2432,13 +2432,11 @@ async def generate_project_video(
                     target_ratio = width / height
                     
                     if img_ratio > target_ratio:
-                        # Image is wider, crop width
                         new_height = img.height
                         new_width = int(new_height * target_ratio)
                         left = (img.width - new_width) // 2
                         img = img.crop((left, 0, left + new_width, new_height))
                     else:
-                        # Image is taller, crop height
                         new_width = img.width
                         new_height = int(new_width / target_ratio)
                         top = (img.height - new_height) // 2
@@ -2449,7 +2447,7 @@ async def generate_project_video(
                     
                     # Save resized image
                     resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
-                    img.save(resized_path, "JPEG", quality=95)
+                    img.save(resized_path, "JPEG", quality=90)
                     
                     # Create video clip from image
                     clip = ImageClip(resized_path, duration=duration_per_photo)
@@ -2463,13 +2461,7 @@ async def generate_project_video(
             
             # Generate unique filename
             video_id = str(ObjectId())
-            output_filename = f"video_{video_id}.mp4"
-            
-            # Create uploads directory if it doesn't exist
-            uploads_dir = "/app/backend/uploads/videos"
-            os_module.makedirs(uploads_dir, exist_ok=True)
-            
-            output_path = os_module.path.join(uploads_dir, output_filename)
+            output_path = os_module.path.join(temp_dir, f"output_{video_id}.mp4")
             
             # Write video file
             final_clip.write_videofile(
@@ -2477,7 +2469,7 @@ async def generate_project_video(
                 fps=24,
                 codec="libx264",
                 audio=False,
-                preset="medium",
+                preset="ultrafast",
                 threads=2
             )
             
@@ -2486,14 +2478,20 @@ async def generate_project_video(
                 clip.close()
             final_clip.close()
             
-            # Create video record in database
+            # Read the video file and convert to base64 for storage
+            with open(output_path, "rb") as f:
+                video_bytes = f.read()
+            video_base64 = base64.b64encode(video_bytes).decode('utf-8')
+            video_data_url = f"data:video/mp4;base64,{video_base64}"
+            
+            # Create video record in database with base64 data
             video_data = {
                 "id": video_id,
                 "project_id": project_id,
                 "user_id": user["id"],
                 "format": format_type,
                 "status": "completed",
-                "file_url": f"/uploads/videos/{output_filename}",
+                "file_url": video_data_url,  # Store as base64 data URL
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             
@@ -2502,7 +2500,6 @@ async def generate_project_video(
             return {
                 "status": "success", 
                 "video_id": video_id, 
-                "file_url": f"/uploads/videos/{output_filename}",
                 "message": "Video generated successfully"
             }
             
