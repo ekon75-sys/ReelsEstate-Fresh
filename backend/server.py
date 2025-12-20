@@ -148,6 +148,100 @@ async def get_me(authorization: str = Header(None)):
         is_admin=user.get("is_admin", False)
     )
 
+# Emergent Auth - exchange session_id for user data (called from frontend)
+class EmergentAuthRequest(BaseModel):
+    session_id: str
+
+@app.post("/api/auth/emergent-callback")
+async def emergent_callback(auth_data: EmergentAuthRequest, response: Response):
+    """Exchange Emergent session_id for user data and create session"""
+    try:
+        # Call Emergent Auth API from backend (avoids CORS issues)
+        async with httpx.AsyncClient() as client:
+            emergent_response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": auth_data.session_id}
+            )
+            
+            if emergent_response.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to validate session with Emergent Auth")
+            
+            user_data = emergent_response.json()
+        
+        db = get_database()
+        
+        # Check if user exists by email
+        user = await db.users.find_one({"email": user_data["email"]}, {"_id": 0})
+        
+        if not user:
+            # Create new user
+            user = {
+                "id": f"user_{user_data['id']}",
+                "user_id": f"user_{user_data['id']}",
+                "email": user_data["email"],
+                "name": user_data["name"],
+                "picture": user_data.get("picture"),
+                "plan": "free",
+                "plan_price": 0,
+                "created_at": datetime.now(timezone.utc),
+                "is_admin": (user_data["email"] == "ekon75@hotmail.com"),
+                "onboarding_step": 0
+            }
+            await db.users.insert_one(user)
+        else:
+            # Update existing user's name/picture if changed
+            await db.users.update_one(
+                {"email": user_data["email"]},
+                {"$set": {
+                    "name": user_data["name"],
+                    "picture": user_data.get("picture"),
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            user = await db.users.find_one({"email": user_data["email"]}, {"_id": 0})
+        
+        # Store session in database
+        session_token = user_data.get("session_token", auth_data.session_id)
+        await db.user_sessions.update_one(
+            {"user_id": user["id"]},
+            {"$set": {
+                "user_id": user["id"],
+                "session_token": session_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc)
+            }},
+            upsert=True
+        )
+        
+        # Set httpOnly cookie with session token
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/",
+            max_age=7 * 24 * 60 * 60
+        )
+        
+        return {
+            "status": "success",
+            "user": {
+                "id": user.get("id"),
+                "user_id": user.get("id"),
+                "email": user.get("email"),
+                "name": user.get("name"),
+                "onboarding_step": user.get("onboarding_step", 0),
+                "plan": user.get("plan", "free")
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Emergent callback error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 # Emergent Auth endpoint - handles session from Emergent's OAuth
 @app.post("/api/auth/emergent-session")
 async def emergent_session(session_data: EmergentSessionRequest, response: Response):
