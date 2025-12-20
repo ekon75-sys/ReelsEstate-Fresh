@@ -176,52 +176,67 @@ const SubscriptionSettings = () => {
 
       {/* Available Plans */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {plans.map((plan) => (
-          <Card 
-            key={plan.id} 
-            className={`relative ${plan.id === 'professional' ? 'border-brand-orange-500 border-2' : ''}`}
-          >
-            {plan.id === 'professional' && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-brand-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                  Most Popular
-                </span>
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="flex flex-col gap-2">
-                <span>{plan.name}</span>
-                <span className="text-2xl font-bold">€{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-600 text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              <Button 
-                className={`w-full ${plan.id === 'professional' ? 'bg-brand-orange-500 hover:bg-brand-orange-600' : ''}`}
-                variant={plan.id === 'professional' ? 'default' : 'outline'}
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={loading || (subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active')}
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <CreditCard className="w-4 h-4 mr-2" />
-                )}
-                {subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active' 
-                  ? 'Current Plan' 
-                  : `Subscribe`}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        {plans.map((plan) => {
+          const qualityBadges = {
+            'sd': { label: 'SD', color: 'bg-gray-200 text-gray-700' },
+            'hd': { label: 'HD', color: 'bg-blue-100 text-blue-700' },
+            'fullhd': { label: 'Full HD', color: 'bg-green-100 text-green-700' },
+            '4k': { label: '4K', color: 'bg-purple-100 text-purple-700' }
+          };
+          const qualityBadge = qualityBadges[plan.max_quality] || qualityBadges['sd'];
+          
+          return (
+            <Card 
+              key={plan.id} 
+              className={`relative ${plan.id === 'professional' ? 'border-brand-orange-500 border-2' : ''}`}
+            >
+              {plan.id === 'professional' && (
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-brand-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+              <CardHeader>
+                <CardTitle className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span>{plan.name}</span>
+                    <span className={`text-xs px-2 py-1 rounded ${qualityBadge.color}`}>
+                      {qualityBadge.label}
+                    </span>
+                  </div>
+                  <span className="text-2xl font-bold">€{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ul className="space-y-2">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-gray-600 text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                
+                <Button 
+                  className={`w-full ${plan.id === 'professional' ? 'bg-brand-orange-500 hover:bg-brand-orange-600' : ''}`}
+                  variant={plan.id === 'professional' ? 'default' : 'outline'}
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={loading || (subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active')}
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="w-4 h-4 mr-2" />
+                  )}
+                  {subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active' 
+                    ? 'Current Plan' 
+                    : `Subscribe`}
+                </Button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Payment Security Notice */}
