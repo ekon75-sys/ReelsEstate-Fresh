@@ -49,10 +49,7 @@ const GenerateVideo = () => {
 
   const checkYouTubeConnection = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/youtube/status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/youtube/status`, { withCredentials: true });
       setYoutubeConnected(response.data.connected);
     } catch (error) {
       console.error('Failed to check YouTube connection:', error);
@@ -61,10 +58,7 @@ const GenerateVideo = () => {
 
   const checkInstagramConnection = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/instagram/status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/instagram/status`, { withCredentials: true });
       setInstagramConnected(response.data.connected);
     } catch (error) {
       console.error('Failed to check Instagram connection:', error);
@@ -73,10 +67,7 @@ const GenerateVideo = () => {
 
   const checkFacebookConnection = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/facebook/status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/facebook/status`, { withCredentials: true });
       setFacebookConnected(response.data.connected);
     } catch (error) {
       console.error('Failed to check Facebook connection:', error);
@@ -85,10 +76,7 @@ const GenerateVideo = () => {
 
   const checkLinkedInConnection = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/auth/linkedin/status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(`${API_URL}/auth/linkedin/status`, { withCredentials: true });
       setLinkedinConnected(response.data.connected);
     } catch (error) {
       console.error('Failed to check LinkedIn connection:', error);
