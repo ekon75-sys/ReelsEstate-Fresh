@@ -307,7 +307,7 @@ const PhotoUpload = () => {
           formData.append('position', i);
           formData.append('caption', photoInfo.type === 'enhanced' ? 'Enhanced' : (photoInfo.type === 'staged' ? 'Virtually Staged' : ''));
           
-          await axios.post(`${API_URL}/projects/${projectId}/photos`, formData);
+          await axios.post(`${API_URL}/projects/${projectId}/photos`, formData, { withCredentials: true });
         }
         
         toast.success(`${photoData.length} photo(s) loaded from enhancement studio!`);
@@ -347,7 +347,7 @@ const PhotoUpload = () => {
         formData.append('position', photos.length + i);
         formData.append('caption', '');
 
-        await axios.post(`${API_URL}/projects/${projectId}/photos`, formData);
+        await axios.post(`${API_URL}/projects/${projectId}/photos`, formData, { withCredentials: true });
       }
       toast.success(`${files.length} photo(s) uploaded!`);
       await loadPhotos();
