@@ -113,7 +113,7 @@ const MusicSelection = () => {
       // Backend will download it during video generation
       await axios.put(`${API_URL}/projects/${projectId}`, { 
         music_url: track.url  // Store the direct URL
-      });
+      }, { withCredentials: true });
       
       setMusicUrl(track.url);
       setSelectedFreeTrack(track);
