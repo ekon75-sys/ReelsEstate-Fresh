@@ -153,7 +153,7 @@ async def get_current_user(request: Request, authorization: str = Header(None)):
 
 # Get current user endpoint
 @app.get("/api/auth/me")
-async def get_me(authorization: str = Header(None)):
+async def get_me(request: Request, authorization: str = Header(None)):
     """Get current authenticated user"""
     user = await get_current_user(authorization)
     return UserResponse(
@@ -543,7 +543,7 @@ class OnboardingProgressRequest(BaseModel):
     completed_steps: dict = {}
 
 @app.get("/api/business-info")
-async def get_business_info(authorization: str = Header(None)):
+async def get_business_info(request: Request, authorization: str = Header(None)):
     """Get business information"""
     user = await get_current_user(authorization)
     
@@ -586,7 +586,7 @@ async def update_onboarding_progress(progress: OnboardingProgressRequest, author
     return {"status": "success", "message": "Progress updated"}
 
 @app.get("/api/onboarding/progress")
-async def get_onboarding_progress(authorization: str = Header(None)):
+async def get_onboarding_progress(request: Request, authorization: str = Header(None)):
     """Get onboarding progress"""
     user = await get_current_user(authorization)
     
@@ -627,7 +627,7 @@ async def upload_logo(file: UploadFile = File(...), authorization: str = Header(
     return {"status": "success", "logo_url": logo_url}
 
 @app.get("/api/branding")
-async def get_branding(authorization: str = Header(None)):
+async def get_branding(request: Request, authorization: str = Header(None)):
     """Get user branding information"""
     user = await get_current_user(authorization)
     
@@ -667,7 +667,7 @@ async def save_branding(branding: BrandingRequest, authorization: str = Header(N
 
 # Facebook OAuth endpoints
 @app.get("/api/facebook/auth-url")
-async def get_facebook_auth_url(authorization: str = Header(None)):
+async def get_facebook_auth_url(request: Request, authorization: str = Header(None)):
     """Generate Facebook OAuth URL"""
     user = await get_current_user(authorization)
     
@@ -748,7 +748,7 @@ async def facebook_callback(code: str, state: str):
         raise HTTPException(status_code=400, detail=f"Facebook connection failed: {str(e)}")
 
 @app.get("/api/instagram/accounts")
-async def get_instagram_accounts(authorization: str = Header(None)):
+async def get_instagram_accounts(request: Request, authorization: str = Header(None)):
     """Get Instagram Business accounts linked to user's Facebook Pages"""
     user = await get_current_user(authorization)
     
@@ -847,7 +847,7 @@ async def connect_instagram_account(
     return {"status": "success", "message": "Instagram account connected"}
 
 @app.get("/api/social-media")
-async def get_social_media_connections(authorization: str = Header(None)):
+async def get_social_media_connections(request: Request, authorization: str = Header(None)):
     """Get user's social media connections"""
     user = await get_current_user(authorization)
     
@@ -919,31 +919,31 @@ async def disconnect_social_media(request: DisconnectRequest, authorization: str
 
 # Social Media Status Endpoints
 @app.get("/api/auth/facebook/status")
-async def get_facebook_status(authorization: str = Header(None)):
+async def get_facebook_status(request: Request, authorization: str = Header(None)):
     """Check Facebook connection status"""
     user = await get_current_user(authorization)
     return {"connected": user.get("facebook_connected", False)}
 
 @app.get("/api/auth/instagram/status")
-async def get_instagram_status(authorization: str = Header(None)):
+async def get_instagram_status(request: Request, authorization: str = Header(None)):
     """Check Instagram connection status"""
     user = await get_current_user(authorization)
     return {"connected": user.get("instagram_connected", False)}
 
 @app.get("/api/auth/youtube/status")
-async def get_youtube_status(authorization: str = Header(None)):
+async def get_youtube_status(request: Request, authorization: str = Header(None)):
     """Check YouTube connection status"""
     user = await get_current_user(authorization)
     return {"connected": user.get("youtube_connected", False)}
 
 @app.get("/api/auth/linkedin/status")
-async def get_linkedin_status(authorization: str = Header(None)):
+async def get_linkedin_status(request: Request, authorization: str = Header(None)):
     """Check LinkedIn connection status"""
     user = await get_current_user(authorization)
     return {"connected": user.get("linkedin_connected", False)}
 
 @app.get("/api/auth/tiktok/status")
-async def get_tiktok_status(authorization: str = Header(None)):
+async def get_tiktok_status(request: Request, authorization: str = Header(None)):
     """Check TikTok connection status"""
     user = await get_current_user(authorization)
     return {"connected": user.get("tiktok_connected", False)}
@@ -1042,7 +1042,7 @@ async def get_platform_auth_url(platform: str, authorization: str = Header(None)
 
 # YouTube OAuth endpoints
 @app.get("/api/youtube/auth-url")
-async def get_youtube_auth_url(authorization: str = Header(None)):
+async def get_youtube_auth_url(request: Request, authorization: str = Header(None)):
     """Generate YouTube OAuth URL"""
     user = await get_current_user(authorization)
     
@@ -1136,7 +1136,7 @@ async def youtube_callback(code: str, state: str):
 
 # TikTok OAuth endpoints
 @app.get("/api/tiktok/auth-url")
-async def get_tiktok_auth_url(authorization: str = Header(None)):
+async def get_tiktok_auth_url(request: Request, authorization: str = Header(None)):
     """Generate TikTok OAuth URL"""
     user = await get_current_user(authorization)
     
@@ -1241,7 +1241,7 @@ async def tiktok_callback(code: str, state: str):
 
 # LinkedIn OAuth endpoints
 @app.get("/api/linkedin/auth-url")
-async def get_linkedin_auth_url(authorization: str = Header(None)):
+async def get_linkedin_auth_url(request: Request, authorization: str = Header(None)):
     """Generate LinkedIn OAuth URL"""
     user = await get_current_user(authorization)
     
@@ -1344,7 +1344,7 @@ async def linkedin_callback(code: str, state: str):
         raise HTTPException(status_code=400, detail=f"LinkedIn connection failed: {str(e)}")
 
 @app.get("/api/auth/linkedin/pages")
-async def get_linkedin_pages(authorization: str = Header(None)):
+async def get_linkedin_pages(request: Request, authorization: str = Header(None)):
     """Get LinkedIn pages for user (personal profile and organization pages)"""
     user = await get_current_user(authorization)
     
@@ -1385,7 +1385,7 @@ async def select_linkedin_page(request: dict, authorization: str = Header(None))
 
 # Agent management endpoints
 @app.get("/api/agents")
-async def get_agents(authorization: str = Header(None)):
+async def get_agents(request: Request, authorization: str = Header(None)):
     """Get all agents for the user"""
     user = await get_current_user(authorization)
     db = get_database()
@@ -1511,7 +1511,7 @@ async def activate_subscription(subscription: SubscriptionRequest, authorization
     }
 
 @app.get("/api/subscription")
-async def get_subscription(authorization: str = Header(None)):
+async def get_subscription(request: Request, authorization: str = Header(None)):
     """Get user's current subscription"""
     user = await get_current_user(authorization)
     
@@ -1533,7 +1533,7 @@ class BillingRequest(BaseModel):
     saved_cards: Optional[str] = "[]"
 
 @app.get("/api/billing")
-async def get_billing(authorization: str = Header(None)):
+async def get_billing(request: Request, authorization: str = Header(None)):
     """Get user's billing information"""
     user = await get_current_user(authorization)
     
@@ -1563,7 +1563,7 @@ async def save_billing(billing: BillingRequest, authorization: str = Header(None
 
 # Subscription cancel endpoint
 @app.post("/api/subscription/cancel")
-async def cancel_subscription(authorization: str = Header(None)):
+async def cancel_subscription(request: Request, authorization: str = Header(None)):
     """Cancel user's subscription"""
     user = await get_current_user(authorization)
     db = get_database()
