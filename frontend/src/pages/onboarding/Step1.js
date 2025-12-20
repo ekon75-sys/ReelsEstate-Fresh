@@ -39,7 +39,7 @@ const OnboardingStep1 = () => {
 
   const loadProgress = async () => {
     try {
-      const response = await axios.get(`${API_URL}/onboarding/progress`);
+      const response = await axios.get(`${API_URL}/onboarding/progress`, { withCredentials: true });
       if (response.data.completed_steps && response.data.completed_steps['1']) {
         setFormData(response.data.completed_steps['1']);
       }
@@ -58,13 +58,13 @@ const OnboardingStep1 = () => {
 
     try {
       // Save business info
-      await axios.post(`${API_URL}/business-info`, formData);
+      await axios.post(`${API_URL}/business-info`, formData, { withCredentials: true });
 
       // Update progress
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 2,
         completed_steps: { '1': formData }
-      });
+      }, { withCredentials: true });
 
       toast.success('Business information saved!');
       navigate('/onboarding/step-2');
