@@ -78,13 +78,13 @@ const OnboardingStep6 = () => {
       await axios.post(`${API_URL}/subscription`, {
         plan_name: plan.name,
         plan_price: plan.price
-      });
+      }, { withCredentials: true });
 
       // Mark onboarding as complete
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 7,
         completed_steps: {}
-      });
+      }, { withCredentials: true });
 
       toast.success('Subscription activated! Welcome to ReelsEstate!');
       navigate('/dashboard');
