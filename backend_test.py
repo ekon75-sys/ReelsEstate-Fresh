@@ -84,22 +84,28 @@ def test_stripe_plans_endpoint():
             
             # Expected plans with correct prices
             expected_plans = {
-                "basic": {"name": "Basic", "price": 19.99, "currency": "eur"},
-                "professional": {"name": "Professional", "price": 39.99, "currency": "eur"},
-                "enterprise": {"name": "Enterprise", "price": 99.99, "currency": "eur"},
-                "ai_caption": {"name": "AI Caption", "price": 199.99, "currency": "eur"}
+                "basic": {"name": "Basic", "price": 19.99, "currency": "EUR"},
+                "professional": {"name": "Professional", "price": 39.99, "currency": "EUR"},
+                "enterprise": {"name": "Enterprise", "price": 99.99, "currency": "EUR"},
+                "ai_caption": {"name": "AI Caption", "price": 199.99, "currency": "EUR"}
             }
             
             # Check if response has plans structure
             if "plans" in data:
-                plans = data["plans"]
+                plans_list = data["plans"]
+                
+                # Convert list to dict for easier checking
+                plans_dict = {}
+                for plan in plans_list:
+                    plans_dict[plan.get("id")] = plan
+                
                 all_plans_correct = True
                 missing_plans = []
                 incorrect_prices = []
                 
                 for plan_id, expected in expected_plans.items():
-                    if plan_id in plans:
-                        actual = plans[plan_id]
+                    if plan_id in plans_dict:
+                        actual = plans_dict[plan_id]
                         if actual.get("price") != expected["price"]:
                             incorrect_prices.append(f"{plan_id}: expected €{expected['price']}, got €{actual.get('price')}")
                         if actual.get("currency") != expected["currency"]:
@@ -114,6 +120,7 @@ def test_stripe_plans_endpoint():
                     log_test("GET /api/stripe/plans - Plan prices", "FAIL", f"Price errors: {incorrect_prices}")
                 else:
                     log_test("GET /api/stripe/plans - All plans correct", "PASS", f"Found all 4 plans with correct prices")
+                    log_test("GET /api/stripe/plans - Response structure", "PASS", f"Plans: {[p['name'] for p in plans_list]}")
                     
             else:
                 log_test("GET /api/stripe/plans - Response structure", "FAIL", f"No 'plans' key in response: {data}")
