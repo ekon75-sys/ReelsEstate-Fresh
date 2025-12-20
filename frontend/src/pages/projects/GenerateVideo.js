@@ -305,11 +305,11 @@ const GenerateVideo = () => {
     setGenerating(true);
 
     try {
-      await axios.post(`${API_URL}/projects/${projectId}/generate-video`, null, {
-        params: { format_type: selectedFormat },
+      const response = await axios.post(`${API_URL}/projects/${projectId}/generate-video`, null, {
+        params: { format_type: selectedFormat, quality: selectedQuality },
         withCredentials: true
       });
-      toast.success('Video generated successfully!');
+      toast.success(`Video gegenereerd! ${response.data.resolution}, ${response.data.file_size_mb}MB`);
       await loadVideos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Video generation failed');
@@ -318,11 +318,11 @@ const GenerateVideo = () => {
     }
   };
 
-  const handleDownload = (videoUrl) => {
-    // Simply open the video URL directly - same as what video player uses
-    const fullUrl = `${process.env.REACT_APP_BACKEND_URL}${videoUrl}`;
-    window.open(fullUrl, '_blank');
-    toast.info('Opening video - use your browser\'s download option (right-click → Save as)');
+  const handleDownload = (video) => {
+    // Use the download endpoint
+    const downloadUrl = `${process.env.REACT_APP_BACKEND_URL}/api/videos/${video.id}/download`;
+    window.open(downloadUrl, '_blank');
+    toast.success('Download gestart!');
   };
 
   const handleSocialUpload = async () => {
