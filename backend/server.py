@@ -2673,7 +2673,7 @@ async def generate_project_video(
                 try:
                     header, logo_b64 = logo_url.split(",", 1)
                     logo_data = base64.b64decode(logo_b64)
-                    logo_img = Image.open(io.BytesIO(logo_data)).convert("RGBA")
+                    logo_img = Image.open(io_module.BytesIO(logo_data)).convert("RGBA")
                 except:
                     logo_img = None
             
