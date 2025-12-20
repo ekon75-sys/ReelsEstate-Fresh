@@ -25,8 +25,13 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # Mount static files for serving uploads
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-# CORS middleware
-cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+# CORS middleware - specific origins required when using credentials
+cors_origins = [
+    "https://reels-estate.app",
+    "https://www.reels-estate.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
