@@ -1736,13 +1736,12 @@ async def create_stripe_checkout(request: Request, checkout_data: CreateCheckout
 
 @app.get("/api/stripe/checkout-status/{session_id}")
 async def get_stripe_checkout_status(request: Request, session_id: str, authorization: str = Header(None)):
-    """Get the status of a Stripe checkout session"""
-    user = await get_current_user(request, authorization)
+    """Get the status of a Stripe checkout session - works without auth for post-redirect"""
     db = get_database()
     
-    # Verify this session belongs to the user
+    # Find transaction by session_id (no user verification needed - session_id is secret enough)
     transaction = await db.payment_transactions.find_one(
-        {"session_id": session_id, "user_id": user["id"]},
+        {"session_id": session_id},
         {"_id": 0}
     )
     
@@ -1756,7 +1755,8 @@ async def get_stripe_checkout_status(request: Request, session_id: str, authoriz
             "payment_status": "paid",
             "plan_name": transaction.get("plan_name"),
             "amount": transaction.get("amount"),
-            "currency": transaction.get("currency")
+            "currency": transaction.get("currency"),
+            "user_id": transaction.get("user_id")
         }
     
     # Check with Stripe using official SDK
@@ -1783,13 +1783,14 @@ async def get_stripe_checkout_status(request: Request, session_id: str, authoriz
             }}
         )
         
-        # If payment successful, activate subscription
+        # If payment successful, activate subscription using user_id from transaction
         if payment_status == "paid":
+            user_id = transaction.get("user_id")
             plan_id = transaction.get("plan_id")
             plan = SUBSCRIPTION_PLANS.get(plan_id, {})
             
             await db.users.update_one(
-                {"id": user["id"]},
+                {"id": user_id},
                 {"$set": {
                     "plan": plan.get("name", "Basic"),
                     "plan_price": plan.get("price", 0),
