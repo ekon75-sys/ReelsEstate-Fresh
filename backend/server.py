@@ -2172,21 +2172,112 @@ async def enhance_project_photo(
     enhancement_type: str = "auto",
     authorization: str = Header(None)
 ):
-    """Enhance a photo (mock implementation)"""
+    """Enhance a photo with real image processing"""
+    import base64
+    from PIL import Image, ImageEnhance, ImageFilter
+    import io
+    
     user = await get_current_user(request, authorization)
     db = get_database()
     
-    # For now, just mark as enhanced (real implementation would use AI)
-    await db.projects.update_one(
-        {"id": project_id, "user_id": user["id"], "photos.id": photo_id},
-        {"$set": {
-            "photos.$.enhanced": True,
-            "photos.$.caption": "Enhanced",
-            "photos.$.enhancement_type": enhancement_type
-        }}
-    )
+    # Get the project and find the photo
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
     
-    return {"status": "success", "message": f"Photo enhanced with {enhancement_type}"}
+    # Find the specific photo
+    photo = None
+    for p in project.get("photos", []):
+        if p["id"] == photo_id:
+            photo = p
+            break
+    
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Get original image data
+    original_url = photo.get("original_url", "")
+    if not original_url.startswith("data:"):
+        raise HTTPException(status_code=400, detail="Invalid image format")
+    
+    try:
+        # Extract base64 data
+        header, base64_data = original_url.split(",", 1)
+        image_data = base64.b64decode(base64_data)
+        
+        # Open image with PIL
+        img = Image.open(io.BytesIO(image_data))
+        img = img.convert("RGB")
+        
+        # Apply enhancement based on type
+        if enhancement_type == "auto":
+            # Balanced enhancement
+            img = ImageEnhance.Brightness(img).enhance(1.1)
+            img = ImageEnhance.Contrast(img).enhance(1.15)
+            img = ImageEnhance.Color(img).enhance(1.1)
+            img = ImageEnhance.Sharpness(img).enhance(1.2)
+        elif enhancement_type == "vibrant":
+            # High saturation
+            img = ImageEnhance.Color(img).enhance(1.4)
+            img = ImageEnhance.Contrast(img).enhance(1.2)
+            img = ImageEnhance.Brightness(img).enhance(1.05)
+        elif enhancement_type == "natural":
+            # Subtle improvements
+            img = ImageEnhance.Brightness(img).enhance(1.05)
+            img = ImageEnhance.Contrast(img).enhance(1.08)
+            img = ImageEnhance.Sharpness(img).enhance(1.1)
+        elif enhancement_type == "hdr":
+            # HDR-like effect
+            img = ImageEnhance.Contrast(img).enhance(1.3)
+            img = ImageEnhance.Brightness(img).enhance(1.1)
+            img = ImageEnhance.Color(img).enhance(1.15)
+            img = ImageEnhance.Sharpness(img).enhance(1.3)
+        elif enhancement_type == "warm":
+            # Warm tones - increase red/yellow
+            img = ImageEnhance.Color(img).enhance(1.15)
+            # Apply slight warm filter by adjusting channels
+            r, g, b = img.split()
+            r = r.point(lambda x: min(255, int(x * 1.1)))
+            b = b.point(lambda x: int(x * 0.95))
+            img = Image.merge("RGB", (r, g, b))
+            img = ImageEnhance.Brightness(img).enhance(1.05)
+        elif enhancement_type == "cool":
+            # Cool tones - increase blue
+            img = ImageEnhance.Color(img).enhance(1.1)
+            r, g, b = img.split()
+            r = r.point(lambda x: int(x * 0.95))
+            b = b.point(lambda x: min(255, int(x * 1.1)))
+            img = Image.merge("RGB", (r, g, b))
+            img = ImageEnhance.Contrast(img).enhance(1.1)
+        elif enhancement_type == "clarity":
+            # Maximum sharpness
+            img = ImageEnhance.Sharpness(img).enhance(2.0)
+            img = ImageEnhance.Contrast(img).enhance(1.2)
+            img = img.filter(ImageFilter.EDGE_ENHANCE)
+        
+        # Save enhanced image to base64
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=95)
+        enhanced_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        enhanced_url = f"data:image/jpeg;base64,{enhanced_base64}"
+        
+        # Update the photo in database
+        await db.projects.update_one(
+            {"id": project_id, "user_id": user["id"], "photos.id": photo_id},
+            {"$set": {
+                "photos.$.enhanced": True,
+                "photos.$.enhanced_url": enhanced_url,
+                "photos.$.enhancement_type": enhancement_type
+            }}
+        )
+        
+        return {"status": "success", "message": f"Photo enhanced with {enhancement_type}"}
+        
+    except Exception as e:
+        print(f"Enhancement error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Enhancement failed: {str(e)}")
 
 @app.post("/api/projects/{project_id}/photos/{photo_id}/undo-enhance")
 async def undo_enhance_photo(
