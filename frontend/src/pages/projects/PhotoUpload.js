@@ -419,7 +419,7 @@ const PhotoUpload = () => {
         for (let i = 0; i < newPhotos.length; i++) {
           await axios.put(`${API_URL}/projects/${projectId}/photos/${newPhotos[i].id}`, {
             position: i
-          });
+          }, { withCredentials: true });
         }
       } catch (error) {
         console.error('Failed to update photo positions');
