@@ -97,6 +97,14 @@ function AppRouter() {
             <Route path="subscription" element={<SubscriptionSettings />} />
           </Route>
         </Routes>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRouter />
         <Toaster position="top-right" />
       </BrowserRouter>
     </AuthProvider>
