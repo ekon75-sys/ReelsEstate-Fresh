@@ -1677,9 +1677,9 @@ async def create_stripe_checkout(request: Request, checkout_data: CreateCheckout
     
     stripe.api_key = api_key
     
-    # Build URLs from frontend origin
-    success_url = f"{checkout_data.origin_url}/settings/subscription?session_id={{CHECKOUT_SESSION_ID}}&status=success"
-    cancel_url = f"{checkout_data.origin_url}/settings/subscription?status=cancelled"
+    # Build URLs from frontend origin - use dedicated payment success page
+    success_url = f"{checkout_data.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&status=success"
+    cancel_url = f"{checkout_data.origin_url}/payment/success?status=cancelled"
     
     try:
         # Create Stripe checkout session using official SDK
