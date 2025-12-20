@@ -2469,8 +2469,7 @@ async def generate_project_video(
                 fps=24,
                 codec="libx264",
                 audio=False,
-                preset="ultrafast",
-                threads=2
+                preset="ultrafast"
             )
             
             # Close clips to free memory
