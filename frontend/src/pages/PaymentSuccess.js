@@ -92,14 +92,17 @@ const PaymentSuccess = () => {
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
                 Payment Successful! 🎉
               </h1>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 mb-2">
                 Your subscription to <strong>{planName}</strong> has been activated.
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Please log in again to access your upgraded account.
               </p>
               <Button 
                 onClick={handleContinue}
                 className="w-full bg-brand-orange-500 hover:bg-brand-orange-600"
               >
-                Continue to App
+                Log In to Continue
               </Button>
             </>
           )}
