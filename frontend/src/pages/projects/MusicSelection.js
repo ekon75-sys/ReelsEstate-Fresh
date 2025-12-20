@@ -61,7 +61,7 @@ const MusicSelection = () => {
 
   const loadProjectMusic = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects/${projectId}`);
+      const response = await axios.get(`${API_URL}/projects/${projectId}`, { withCredentials: true });
       if (response.data.music_url) {
         setMusicUrl(response.data.music_url);
       }
