@@ -30,7 +30,7 @@ const OnboardingStep5 = () => {
 
   const loadAgents = async () => {
     try {
-      const response = await axios.get(`${API_URL}/agents`);
+      const response = await axios.get(`${API_URL}/agents`, { withCredentials: true });
       setAgents(response.data);
     } catch (error) {
       console.error('Failed to load agents:', error);
@@ -58,14 +58,14 @@ const OnboardingStep5 = () => {
       if (photoFile) {
         const formData = new FormData();
         formData.append('file', photoFile);
-        const uploadResponse = await axios.post(`${API_URL}/upload/agent-photo`, formData);
+        const uploadResponse = await axios.post(`${API_URL}/upload/agent-photo`, formData, { withCredentials: true });
         photo_url = uploadResponse.data.photo_url;
       }
 
       await axios.post(`${API_URL}/agents`, {
         ...currentAgent,
         photo_url
-      });
+      }, { withCredentials: true });
 
       toast.success('Agent added!');
       await loadAgents();
@@ -92,7 +92,7 @@ const OnboardingStep5 = () => {
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 6,
         completed_steps: {}
-      });
+      }, { withCredentials: true });
       navigate('/onboarding/step-6');
     } catch (error) {
       toast.error('Failed to proceed');
