@@ -31,9 +31,9 @@ const ConfigureProject = () => {
   const loadData = async () => {
     try {
       const [agentsRes, brandingRes, projectRes] = await Promise.all([
-        axios.get(`${API_URL}/agents`),
-        axios.get(`${API_URL}/branding`),
-        axios.get(`${API_URL}/projects/${projectId}`)
+        axios.get(`${API_URL}/agents`, { withCredentials: true }),
+        axios.get(`${API_URL}/branding`, { withCredentials: true }),
+        axios.get(`${API_URL}/projects/${projectId}`, { withCredentials: true })
       ]);
 
       setAgents(agentsRes.data);
