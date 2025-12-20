@@ -2581,10 +2581,11 @@ async def generate_project_video(
             
             final_clip.write_videofile(
                 output_path,
-                fps=24,
+                fps=15,
                 codec="libx264",
                 audio=False,
-                preset="ultrafast"
+                preset="ultrafast",
+                bitrate="500k"
             )
             
             # Close all clips
