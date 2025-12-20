@@ -25,11 +25,83 @@ app = FastAPI(title="ReelsEstate API")
 
 # Subscription plans - FIXED PRICES (never accept from frontend)
 SUBSCRIPTION_PLANS = {
-    "basic": {"name": "Basic", "price": 19.99, "currency": "eur"},
-    "professional": {"name": "Professional", "price": 39.99, "currency": "eur"},
-    "enterprise": {"name": "Enterprise", "price": 99.99, "currency": "eur"},
-    "ai_caption": {"name": "AI Caption", "price": 199.99, "currency": "eur"}
+    "basic": {
+        "name": "Basic", 
+        "price": 19.99, 
+        "currency": "eur",
+        "max_quality": "sd",
+        "features": [
+            "5 video creaties per maand",
+            "SD kwaliteit (480p)",
+            "Basis templates",
+            "Email support"
+        ]
+    },
+    "professional": {
+        "name": "Professional", 
+        "price": 39.99, 
+        "currency": "eur",
+        "max_quality": "hd",
+        "features": [
+            "20 video creaties per maand",
+            "HD kwaliteit (720p)",
+            "Alle templates",
+            "Priority support",
+            "Custom branding"
+        ]
+    },
+    "enterprise": {
+        "name": "Enterprise", 
+        "price": 99.99, 
+        "currency": "eur",
+        "max_quality": "fullhd",
+        "features": [
+            "Onbeperkt video creaties",
+            "Full HD kwaliteit (1080p)",
+            "Alle premium templates",
+            "24/7 Priority support",
+            "Custom branding",
+            "Analytics dashboard"
+        ]
+    },
+    "ai_caption": {
+        "name": "AI Caption", 
+        "price": 199.99, 
+        "currency": "eur",
+        "max_quality": "4k",
+        "features": [
+            "Alles in Enterprise",
+            "4K Ultra HD kwaliteit (2160p)",
+            "AI-gegenereerde captions",
+            "Automatische ondertiteling",
+            "Multi-language support",
+            "Advanced AI features"
+        ]
+    }
 }
+
+# Quality levels hierarchy
+QUALITY_LEVELS = {
+    "sd": 1,
+    "hd": 2,
+    "fullhd": 3,
+    "4k": 4
+}
+
+def get_max_quality_for_plan(plan_name: str) -> str:
+    """Get the maximum allowed quality for a subscription plan"""
+    plan_name_lower = plan_name.lower().replace(" ", "_")
+    for plan_id, plan_data in SUBSCRIPTION_PLANS.items():
+        if plan_id == plan_name_lower or plan_data["name"].lower() == plan_name.lower():
+            return plan_data.get("max_quality", "sd")
+    return "sd"  # Default to SD for unknown/trial plans
+
+def is_quality_allowed(user_plan: str, requested_quality: str) -> bool:
+    """Check if a quality level is allowed for a user's plan"""
+    max_quality = get_max_quality_for_plan(user_plan)
+    max_level = QUALITY_LEVELS.get(max_quality, 1)
+    requested_level = QUALITY_LEVELS.get(requested_quality, 1)
+    return requested_level <= max_level
 
 # Create uploads directory if it doesn't exist
 UPLOAD_DIR = Path("/app/uploads")
