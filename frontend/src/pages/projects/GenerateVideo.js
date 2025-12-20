@@ -500,38 +500,25 @@ const GenerateVideo = () => {
                               <p className="text-sm text-gray-500">Use video controls (⋮) to download</p>
                             </div>
                             <button
-                            onClick={async () => {
+                            onClick={() => {
                               try {
                                 setDownloading(video.id);
-                                const downloadUrl = process.env.REACT_APP_BACKEND_URL + video.file_url + '/download';
                                 const filename = `${project?.title?.replace(/[^a-z0-9]/gi, '_') || 'video'}_${video.format}.mp4`;
                                 
-                                console.log('Download URL:', downloadUrl);
-                                console.log('Filename:', filename);
-                                
-                                // Fetch as blob to handle CORS properly
-                                console.log('Fetching video...');
-                                const response = await fetch(downloadUrl);
-                                console.log('Response status:', response.status);
-                                
-                                if (!response.ok) {
-                                  throw new Error(`HTTP error! status: ${response.status}`);
+                                if (video.file_url?.startsWith('data:')) {
+                                  // Base64 video - create download link
+                                  const link = document.createElement('a');
+                                  link.href = video.file_url;
+                                  link.download = filename;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  toast.success('Video download started!');
+                                } else {
+                                  // Regular URL - open in new tab
+                                  window.open(process.env.REACT_APP_BACKEND_URL + video.file_url, '_blank');
+                                  toast.info('Video opened - right-click to save');
                                 }
-                                
-                                const blob = await response.blob();
-                                console.log('Blob size:', blob.size);
-                                
-                                // Create object URL and open in new tab (works in sandboxed iframes)
-                                const blobUrl = URL.createObjectURL(blob);
-                                console.log('Blob URL created:', blobUrl);
-                                
-                                // Open in new window - this bypasses sandbox download restrictions
-                                window.open(blobUrl, '_blank');
-                                
-                                // Clean up the blob URL after a delay
-                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                                
-                                toast.success('Video opened in new tab - use browser download (Ctrl+S or ⋮ menu)');
                               } catch (error) {
                                 console.error('Download error:', error);
                                 toast.error(`Download failed: ${error.message}`);
