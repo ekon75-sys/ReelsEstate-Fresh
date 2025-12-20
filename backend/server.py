@@ -1758,35 +1758,39 @@ async def get_stripe_checkout_status(request: Request, session_id: str, authoriz
             "currency": transaction.get("currency")
         }
     
-    # Check with Stripe
+    # Check with Stripe using official SDK
     api_key = os.getenv("STRIPE_API_KEY")
-    webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    stripe.api_key = api_key
     
     try:
-        status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+        session = stripe.checkout.Session.retrieve(session_id)
+        
+        # Determine payment status
+        payment_status = "pending"
+        if session.payment_status == "paid":
+            payment_status = "paid"
+        elif session.status == "expired":
+            payment_status = "expired"
         
         # Update transaction status
-        new_status = "paid" if status.payment_status == "paid" else status.payment_status
-        
         await db.payment_transactions.update_one(
             {"session_id": session_id},
             {"$set": {
-                "payment_status": new_status,
-                "stripe_status": status.status,
+                "payment_status": payment_status,
+                "stripe_status": session.status,
                 "updated_at": datetime.now(timezone.utc)
             }}
         )
         
         # If payment successful, activate subscription
-        if status.payment_status == "paid":
+        if payment_status == "paid":
             plan_id = transaction.get("plan_id")
             plan = SUBSCRIPTION_PLANS.get(plan_id, {})
             
             await db.users.update_one(
                 {"id": user["id"]},
                 {"$set": {
-                    "plan": plan.get("name", "Starter"),
+                    "plan": plan.get("name", "Basic"),
                     "plan_price": plan.get("price", 0),
                     "subscription_status": "active",
                     "trial_active": False,
@@ -1796,13 +1800,16 @@ async def get_stripe_checkout_status(request: Request, session_id: str, authoriz
             )
         
         return {
-            "status": status.status,
-            "payment_status": status.payment_status,
-            "amount": status.amount_total / 100,  # Convert from cents
-            "currency": status.currency,
+            "status": session.status,
+            "payment_status": payment_status,
+            "amount": session.amount_total / 100 if session.amount_total else 0,  # Convert from cents
+            "currency": session.currency,
             "plan_name": transaction.get("plan_name")
         }
         
+    except stripe.error.StripeError as e:
+        print(f"Stripe status check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check payment status: {str(e)}")
     except Exception as e:
         print(f"Stripe status check error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to check payment status: {str(e)}")
