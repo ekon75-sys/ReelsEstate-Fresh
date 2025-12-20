@@ -143,6 +143,157 @@ async def get_me(authorization: str = Header(None)):
         is_admin=user.get("is_admin", False)
     )
 
+# Emergent Auth endpoint - handles session from Emergent's OAuth
+@app.post("/api/auth/emergent-session")
+async def emergent_session(session_data: EmergentSessionRequest, response: Response):
+    """Process Emergent Auth session and create/update user"""
+    try:
+        db = get_database()
+        
+        # Check if user exists by email
+        user = await db.users.find_one({"email": session_data.email}, {"_id": 0})
+        
+        if not user:
+            # Create new user
+            user = {
+                "id": f"user_{session_data.user_id}",
+                "user_id": f"user_{session_data.user_id}",
+                "email": session_data.email,
+                "name": session_data.name,
+                "picture": session_data.picture,
+                "plan": "free",
+                "plan_price": 0,
+                "created_at": datetime.now(timezone.utc),
+                "is_admin": (session_data.email == "ekon75@hotmail.com"),
+                "onboarding_step": 0
+            }
+            await db.users.insert_one(user)
+        else:
+            # Update existing user's name/picture if changed
+            await db.users.update_one(
+                {"email": session_data.email},
+                {"$set": {
+                    "name": session_data.name,
+                    "picture": session_data.picture,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            # Refresh user data
+            user = await db.users.find_one({"email": session_data.email}, {"_id": 0})
+        
+        # Store session in database
+        await db.user_sessions.update_one(
+            {"user_id": user["id"]},
+            {"$set": {
+                "user_id": user["id"],
+                "session_token": session_data.session_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "created_at": datetime.now(timezone.utc)
+            }},
+            upsert=True
+        )
+        
+        # Set httpOnly cookie with session token
+        response.set_cookie(
+            key="session_token",
+            value=session_data.session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/",
+            max_age=7 * 24 * 60 * 60  # 7 days
+        )
+        
+        return {
+            "status": "success",
+            "user": {
+                "id": user.get("id"),
+                "user_id": user.get("id"),
+                "email": user.get("email"),
+                "name": user.get("name"),
+                "onboarding_step": user.get("onboarding_step", 0),
+                "plan": user.get("plan", "free")
+            }
+        }
+        
+    except Exception as e:
+        print(f"Emergent session error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+# Auth/me endpoint - verify session and get user
+@app.get("/api/auth/me")
+async def auth_me(request: Request, authorization: str = Header(None)):
+    """Get current user from session cookie or Authorization header"""
+    db = get_database()
+    
+    # Try session cookie first
+    session_token = request.cookies.get("session_token")
+    
+    # Fallback to Authorization header
+    if not session_token and authorization:
+        session_token = authorization.replace("Bearer ", "")
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Check session in database
+    session = await db.user_sessions.find_one(
+        {"session_token": session_token},
+        {"_id": 0}
+    )
+    
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    # Check expiry
+    expires_at = session.get("expires_at")
+    if expires_at:
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Session expired")
+    
+    # Get user
+    user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    return {
+        "id": user.get("id"),
+        "user_id": user.get("id"),
+        "email": user.get("email"),
+        "name": user.get("name"),
+        "picture": user.get("picture"),
+        "onboarding_step": user.get("onboarding_step", 0),
+        "plan": user.get("plan", "free"),
+        "is_admin": user.get("is_admin", False)
+    }
+
+# Logout endpoint
+@app.post("/api/auth/logout")
+async def logout(request: Request, response: Response):
+    """Logout user - clear session"""
+    db = get_database()
+    
+    session_token = request.cookies.get("session_token")
+    
+    if session_token:
+        # Delete session from database
+        await db.user_sessions.delete_one({"session_token": session_token})
+    
+    # Clear cookie
+    response.delete_cookie(
+        key="session_token",
+        path="/",
+        secure=True,
+        samesite="none"
+    )
+    
+    return {"status": "success", "message": "Logged out"}
+
 # Google OAuth endpoints
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
