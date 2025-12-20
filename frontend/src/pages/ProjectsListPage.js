@@ -40,7 +40,7 @@ const ProjectsListPage = () => {
 
   const loadProjects = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects`);
+      const response = await axios.get(`${API_URL}/projects`, { withCredentials: true });
       const projectsData = response.data;
       console.log('Projects loaded:', projectsData);
       setProjects(projectsData);
@@ -50,7 +50,7 @@ const ProjectsListPage = () => {
       for (const project of projectsData) {
         console.log('Project details:', project);
         try {
-          const videosResponse = await axios.get(`${API_URL}/projects/${project.id}/videos`);
+          const videosResponse = await axios.get(`${API_URL}/projects/${project.id}/videos`, { withCredentials: true });
           videosData[project.id] = videosResponse.data;
           console.log(`Videos for project ${project.id}:`, videosResponse.data.length);
         } catch (error) {
