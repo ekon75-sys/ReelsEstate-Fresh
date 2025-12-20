@@ -2464,19 +2464,19 @@ async def generate_project_video(
     request: Request,
     project_id: str,
     format_type: str = "16:9",
+    quality: str = "hd",  # sd, hd, fullhd, 4k
     authorization: str = Header(None)
 ):
-    """Generate a professional video with intro, Ken Burns effect, and outro"""
+    """Generate a professional video with intro, Ken Burns effect, and outro - stored in GridFS"""
     import base64
     import tempfile
     import os as os_module
-    import random
-    from moviepy import ImageClip, concatenate_videoclips, TextClip, CompositeVideoClip, ColorClip
-    from PIL import Image, ImageDraw, ImageFont
-    import io
+    from moviepy import ImageClip, concatenate_videoclips, CompositeVideoClip, ColorClip
+    from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
     
     user = await get_current_user(request, authorization)
     db = get_database()
+    fs = get_gridfs_bucket()
     
     # Get project with all details
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -2492,6 +2492,13 @@ async def generate_project_video(
     branding = user_data.get("branding", {}) if user_data else {}
     main_color = branding.get("main_color", "#FF6B35")
     
+    # Convert hex color to RGB tuple
+    def hex_to_rgb(hex_color):
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    
+    brand_rgb = hex_to_rgb(main_color)
+    
     # Get agent info if configured
     agent_id = project.get("agent_id")
     agent = None
@@ -2502,15 +2509,18 @@ async def generate_project_video(
                 agent = a
                 break
     
-    # Determine video dimensions based on format - use lower resolution for smaller file size
-    if format_type == "16:9":
-        width, height = 854, 480  # 480p for smaller file size
-    elif format_type == "9:16":
-        width, height = 480, 854
-    elif format_type == "1:1":
-        width, height = 480, 480
-    else:
-        width, height = 854, 480
+    # Determine video dimensions based on format and quality
+    quality_settings = {
+        "sd": {"16:9": (854, 480), "9:16": (480, 854), "1:1": (480, 480), "fps": 24, "bitrate": "1000k"},
+        "hd": {"16:9": (1280, 720), "9:16": (720, 1280), "1:1": (720, 720), "fps": 30, "bitrate": "2500k"},
+        "fullhd": {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080), "fps": 30, "bitrate": "5000k"},
+        "4k": {"16:9": (3840, 2160), "9:16": (2160, 3840), "1:1": (2160, 2160), "fps": 30, "bitrate": "15000k"}
+    }
+    
+    settings = quality_settings.get(quality, quality_settings["hd"])
+    width, height = settings.get(format_type, settings["16:9"])
+    fps = settings["fps"]
+    bitrate = settings["bitrate"]
     
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
