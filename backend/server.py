@@ -602,7 +602,7 @@ async def get_onboarding_progress(request: Request, authorization: str = Header(
 
 # File upload endpoints
 @app.post("/api/upload/logo")
-async def upload_logo(file: UploadFile = File(...), request: Request, authorization: str = Header(None)):
+async def upload_logo(request: Request, file: UploadFile = File(...)):
     """Upload company logo - stores as base64 in database"""
     user = await get_current_user_from_request(request)
     
