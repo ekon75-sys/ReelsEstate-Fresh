@@ -13,8 +13,8 @@ from bson import ObjectId
 import shutil
 from pathlib import Path
 
-# Stripe integration
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+# Stripe integration - using official stripe library
+import stripe
 
 # Load environment variables
 load_dotenv()
@@ -23,8 +23,10 @@ app = FastAPI(title="ReelsEstate API")
 
 # Subscription plans - FIXED PRICES (never accept from frontend)
 SUBSCRIPTION_PLANS = {
-    "starter": {"name": "Starter", "price": 29.00, "currency": "eur"},
-    "premium": {"name": "Premium", "price": 79.00, "currency": "eur"}
+    "basic": {"name": "Basic", "price": 19.99, "currency": "eur"},
+    "professional": {"name": "Professional", "price": 39.99, "currency": "eur"},
+    "enterprise": {"name": "Enterprise", "price": 99.99, "currency": "eur"},
+    "ai_caption": {"name": "AI Caption", "price": 199.99, "currency": "eur"}
 }
 
 # Create uploads directory if it doesn't exist
