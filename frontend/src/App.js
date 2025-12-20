@@ -42,15 +42,8 @@ import GenerateVideo from '@/pages/projects/GenerateVideo';
 import PhotoEnhancementPage from '@/pages/PhotoEnhancementPage';
 import AdminPanel from '@/pages/AdminPanel';
 
-// Auth Router - Check for session_id in URL fragment before routing
+// App Router - LoginPage handles session_id detection itself
 function AppRouter() {
-  const location = useLocation();
-  
-  // Check URL fragment for session_id (from Emergent Auth)
-  if (location.hash?.includes('session_id=')) {
-    return <AuthCallback />;
-  }
-  
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
