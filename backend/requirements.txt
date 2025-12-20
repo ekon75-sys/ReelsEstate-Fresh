@@ -5,4 +5,4 @@ pymongo==4.6.0
 python-dotenv==1.0.0
 httpx==0.25.2
 pyjwt==2.8.0
-python-multipart==0.0.6# Trigger deploy Fri Dec 19 21:50:35 UTC 2025
+python-multipart==0.0.6
