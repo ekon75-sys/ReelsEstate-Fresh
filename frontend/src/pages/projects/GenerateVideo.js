@@ -330,7 +330,8 @@ const GenerateVideo = () => {
 
     try {
       await axios.post(`${API_URL}/projects/${projectId}/generate-video`, null, {
-        params: { format_type: selectedFormat }
+        params: { format_type: selectedFormat },
+        withCredentials: true
       });
       toast.success('Video generated successfully!');
       await loadVideos();
