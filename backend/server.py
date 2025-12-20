@@ -2211,6 +2211,45 @@ async def undo_enhance_photo(
     return {"status": "success", "message": "Enhancement removed"}
 
 # ============================================
+# PROJECT MUSIC ENDPOINT
+# ============================================
+
+@app.post("/api/projects/{project_id}/upload-music")
+async def upload_project_music(
+    request: Request,
+    project_id: str,
+    file: UploadFile = File(...),
+    authorization: str = Header(None)
+):
+    """Upload music to a project"""
+    import base64
+    
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Verify project belongs to user
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Read file and convert to base64
+    file_content = await file.read()
+    base64_data = base64.b64encode(file_content).decode('utf-8')
+    
+    music_url = f"data:{file.content_type};base64,{base64_data}"
+    
+    # Update project with music URL
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {
+            "music_url": music_url,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"status": "success", "music_url": music_url}
+
+# ============================================
 # PROJECT VIDEOS ENDPOINTS
 # ============================================
 
