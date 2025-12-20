@@ -2688,11 +2688,11 @@ async def generate_project_video(
             
             final_clip.write_videofile(
                 output_path,
-                fps=15,
+                fps=fps,
                 codec="libx264",
                 audio=False,
-                preset="ultrafast",
-                bitrate="500k"
+                preset="medium",
+                bitrate=bitrate
             )
             
             # Close all clips
@@ -2700,20 +2700,38 @@ async def generate_project_video(
                 clip.close()
             final_clip.close()
             
-            # Read and convert to base64
+            # Upload to GridFS instead of base64
             with open(output_path, "rb") as f:
                 video_bytes = f.read()
-            video_base64 = base64.b64encode(video_bytes).decode('utf-8')
-            video_data_url = f"data:video/mp4;base64,{video_base64}"
             
-            # Save to database
+            # Store in GridFS
+            file_id = await fs.upload_from_stream(
+                f"video_{video_id}.mp4",
+                io.BytesIO(video_bytes),
+                metadata={
+                    "video_id": video_id,
+                    "project_id": project_id,
+                    "user_id": user["id"],
+                    "format": format_type,
+                    "quality": quality,
+                    "width": width,
+                    "height": height
+                }
+            )
+            
+            # Save video record to database (with GridFS reference, not base64)
             video_data = {
                 "id": video_id,
                 "project_id": project_id,
                 "user_id": user["id"],
                 "format": format_type,
+                "quality": quality,
+                "width": width,
+                "height": height,
                 "status": "completed",
-                "file_url": video_data_url,
+                "file_url": f"/api/videos/{video_id}/stream",  # URL to stream endpoint
+                "gridfs_id": str(file_id),
+                "file_size": len(video_bytes),
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             
@@ -2721,7 +2739,10 @@ async def generate_project_video(
             
             return {
                 "status": "success", 
-                "video_id": video_id, 
+                "video_id": video_id,
+                "quality": quality,
+                "resolution": f"{width}x{height}",
+                "file_size_mb": round(len(video_bytes) / (1024 * 1024), 2),
                 "message": "Video generated successfully"
             }
             
