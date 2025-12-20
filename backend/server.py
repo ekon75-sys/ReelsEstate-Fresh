@@ -111,28 +111,46 @@ async def test_db():
     except Exception as e:
         return {"status": "error", "database": "failed", "error": str(e)}
 
-# Auth middleware to get current user from JWT
-async def get_current_user(authorization: str = Header(None)):
-    """Get current user from JWT token"""
-    if not authorization or not authorization.startswith("Bearer "):
+# Auth middleware to get current user from session cookie or JWT
+async def get_current_user(request: Request = None, authorization: str = Header(None)):
+    """Get current user from session cookie or JWT token"""
+    db = get_database()
+    
+    # Try session cookie first (new method)
+    session_token = None
+    if request:
+        session_token = request.cookies.get("session_token")
+    
+    # Fallback to Authorization header (old method)
+    if not session_token and authorization and authorization.startswith("Bearer "):
+        session_token = authorization.replace("Bearer ", "")
+    
+    if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    token = authorization.replace("Bearer ", "")
+    # Check session in database
+    session = await db.user_sessions.find_one(
+        {"session_token": session_token},
+        {"_id": 0}
+    )
+    
+    if session:
+        # Session-based auth
+        user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0})
+        if user:
+            return user
+    
+    # Try JWT decode as fallback
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        payload = jwt.decode(session_token, JWT_SECRET, algorithms=["HS256"])
         user_id = payload.get("user_id")
-        
-        db = get_database()
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
-        
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        if user:
+            return user
+    except:
+        pass
+    
+    raise HTTPException(status_code=401, detail="Invalid session")
 
 # Get current user endpoint
 @app.get("/api/auth/me")
