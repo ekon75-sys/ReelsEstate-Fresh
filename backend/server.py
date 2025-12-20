@@ -2418,7 +2418,7 @@ async def generate_project_video(
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
             all_clips = []
-            duration_per_photo = 4  # seconds per photo
+            duration_per_photo = 3  # seconds per photo (shorter for smaller file)
             
             # === CREATE INTRO ===
             intro_img = Image.new('RGB', (width, height), color=main_color)
