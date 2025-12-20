@@ -1414,7 +1414,7 @@ async def add_agent(agent: dict, authorization: str = Header(None)):
     return {"status": "success", "message": "Agent added"}
 
 @app.put("/api/agents/{agent_id}")
-async def update_agent(agent_id: str, agent: dict, authorization: str = Header(None)):
+async def update_agent(request: Request, agent_id: str, agent: dict, authorization: str = Header(None)):
     """Update an existing agent"""
     user = await get_current_user(request, authorization)
     db = get_database()
@@ -1440,7 +1440,7 @@ async def update_agent(agent_id: str, agent: dict, authorization: str = Header(N
     return {"status": "success", "message": "Agent updated"}
 
 @app.delete("/api/agents/{agent_id}")
-async def delete_agent(agent_id: str, authorization: str = Header(None)):
+async def delete_agent(request: Request, agent_id: str, authorization: str = Header(None)):
     """Delete an agent"""
     user = await get_current_user(request, authorization)
     db = get_database()
