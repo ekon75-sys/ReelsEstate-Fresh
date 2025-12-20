@@ -327,7 +327,7 @@ const PhotoUpload = () => {
 
   const loadPhotos = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects/${projectId}`);
+      const response = await axios.get(`${API_URL}/projects/${projectId}`, { withCredentials: true });
       setPhotos(response.data.photos || []);
     } catch (error) {
       console.error('Failed to load photos:', error);
