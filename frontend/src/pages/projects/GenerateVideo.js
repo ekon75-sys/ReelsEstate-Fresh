@@ -16,6 +16,7 @@ const GenerateVideo = () => {
   const { user } = useAuth();
   const [generating, setGenerating] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('16:9');
+  const [selectedQuality, setSelectedQuality] = useState('hd');
   const [videos, setVideos] = useState([]);
   const [project, setProject] = useState(null);
   const [downloading, setDownloading] = useState(null);
@@ -37,6 +38,13 @@ const GenerateVideo = () => {
   const [generatingMetadata, setGeneratingMetadata] = useState(false);
   const [alteredContent, setAlteredContent] = useState(false); // Default: No
   const [remixOption, setRemixOption] = useState('audio'); // Default: audio only
+
+  const qualityOptions = [
+    { value: 'sd', label: 'SD (480p)', description: 'Snel, klein bestand' },
+    { value: 'hd', label: 'HD (720p)', description: 'Goede kwaliteit' },
+    { value: 'fullhd', label: 'Full HD (1080p)', description: 'Hoge kwaliteit' },
+    { value: '4k', label: '4K (2160p)', description: 'Ultra HD, groot bestand' }
+  ];
 
   useEffect(() => {
     loadProject();
