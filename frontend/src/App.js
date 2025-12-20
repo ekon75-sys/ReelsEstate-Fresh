@@ -1,5 +1,5 @@
 import '@/App.css';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -7,7 +7,6 @@ import { Toaster } from '@/components/ui/sonner';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
-import AuthCallback from '@/pages/AuthCallback';
 import FacebookCallback from '@/pages/FacebookCallback';
 import YouTubeCallback from '@/pages/YouTubeCallback';
 import TikTokCallback from '@/pages/TikTokCallback';
