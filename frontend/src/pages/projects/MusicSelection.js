@@ -129,7 +129,7 @@ const MusicSelection = () => {
 
   const handleRemoveMusic = async () => {
     try {
-      await axios.put(`${API_URL}/projects/${projectId}`, { music_url: null });
+      await axios.put(`${API_URL}/projects/${projectId}`, { music_url: null }, { withCredentials: true });
       setMusicUrl('');
       setMusicFile(null);
       setSelectedFreeTrack(null);
