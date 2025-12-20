@@ -407,7 +407,7 @@ const PhotoUpload = () => {
     }
   };
 
-  const handleDragEnd = async (event) => {
+  const handleDragEnd = (event) => {
     const { active, over } = event;
 
     if (active.id !== over.id) {
@@ -417,19 +417,24 @@ const PhotoUpload = () => {
       const newPhotos = arrayMove(photos, oldIndex, newIndex);
       setPhotos(newPhotos);
 
-      // Update positions on backend
-      try {
-        for (let i = 0; i < newPhotos.length; i++) {
-          await axios.put(`${API_URL}/projects/${projectId}/photos/${newPhotos[i].id}`, {
-            position: i
-          }, { withCredentials: true });
+      // Update positions on backend in background (non-blocking)
+      const updatePositions = async () => {
+        try {
+          // Send all updates in parallel
+          await Promise.all(
+            newPhotos.map((photo, i) => 
+              axios.put(`${API_URL}/projects/${projectId}/photos/${photo.id}`, {
+                position: i
+              }, { withCredentials: true })
+            )
+          );
+        } catch (error) {
+          console.error('Failed to update photo positions');
+          toast.error('Failed to save photo order');
+          loadPhotos();
         }
-      } catch (error) {
-        console.error('Failed to update photo positions');
-        toast.error('Failed to update photo order');
-        // Reload to get correct order
-        await loadPhotos();
-      }
+      };
+      updatePositions();
     }
   };
 
