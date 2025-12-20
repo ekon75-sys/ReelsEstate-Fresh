@@ -999,7 +999,7 @@ async def disconnect_platform(request: Request, platform: str, authorization: st
     return {"status": "success", "message": f"{platform} disconnected"}
 
 @app.get("/api/auth/{platform}/authorize")
-async def get_platform_auth_url(platform: str, authorization: str = Header(None)):
+async def get_platform_auth_url(request: Request, platform: str, authorization: str = Header(None)):
     """Get OAuth authorization URL for a platform"""
     user = await get_current_user(request, authorization)
     
