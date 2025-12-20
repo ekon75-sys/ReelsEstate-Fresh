@@ -1480,7 +1480,7 @@ class SubscriptionRequest(BaseModel):
     plan_price: float
 
 @app.post("/api/subscription")
-async def activate_subscription(subscription: SubscriptionRequest, authorization: str = Header(None)):
+async def activate_subscription(request: Request, subscription: SubscriptionRequest, authorization: str = Header(None)):
     """Activate a subscription plan"""
     user = await get_current_user(request, authorization)
     db = get_database()
