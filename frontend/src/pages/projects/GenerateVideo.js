@@ -463,6 +463,29 @@ const GenerateVideo = () => {
               </div>
             </div>
 
+            {/* Quality Selector */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Select Video Quality</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {qualityOptions.map(quality => (
+                  <Card
+                    key={quality.value}
+                    className={`cursor-pointer transition-all ${
+                      selectedQuality === quality.value
+                        ? 'border-brand-orange-500 border-2 bg-brand-orange-50'
+                        : 'border-gray-200 hover:border-brand-orange-300'
+                    }`}
+                    onClick={() => setSelectedQuality(quality.value)}
+                  >
+                    <CardContent className="p-4 text-center">
+                      <h4 className="font-semibold">{quality.label}</h4>
+                      <p className="text-xs text-gray-500">{quality.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
             {/* Generate Button */}
             <Button
               className="w-full bg-brand-orange-500 hover:bg-brand-orange-600 py-6 text-base sm:text-lg min-h-[72px]"
@@ -474,14 +497,14 @@ const GenerateVideo = () => {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin flex-shrink-0" />
-                    <span>Generating Video...</span>
+                    <span>Generating {selectedQuality.toUpperCase()} Video...</span>
                   </div>
-                  <span className="text-sm">(This may take 1-2 minutes)</span>
+                  <span className="text-sm">(Dit kan 1-5 minuten duren)</span>
                 </div>
               ) : (
                 <>
                   <Video className="mr-2 w-6 h-6" />
-                  Generate Video
+                  Generate {selectedQuality.toUpperCase()} Video
                 </>
               )}
             </Button>
@@ -496,7 +519,9 @@ const GenerateVideo = () => {
                       <CardContent className="p-4">
                         <div className="aspect-video bg-black rounded mb-3">
                           <video
-                            src={video.file_url?.startsWith('data:') ? video.file_url : process.env.REACT_APP_BACKEND_URL + video.file_url}
+                            src={video.file_url?.startsWith('data:') || video.file_url?.startsWith('/api/') 
+                              ? process.env.REACT_APP_BACKEND_URL + video.file_url 
+                              : video.file_url}
                             controls
                             className="w-full h-full"
                           />
@@ -504,8 +529,11 @@ const GenerateVideo = () => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-2">
                             <div>
-                              <p className="font-medium">{video.format}</p>
-                              <p className="text-sm text-gray-500">Use video controls (⋮) to download</p>
+                              <p className="font-medium">{video.format} - {video.quality?.toUpperCase() || 'HD'}</p>
+                              <p className="text-sm text-gray-500">
+                                {video.width && video.height ? `${video.width}x${video.height}` : ''} 
+                                {video.file_size_mb ? ` • ${(video.file_size / 1024 / 1024).toFixed(1)}MB` : ''}
+                              </p>
                             </div>
                             <button
                             onClick={() => {
