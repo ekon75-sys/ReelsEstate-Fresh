@@ -27,7 +27,7 @@ const OnboardingStep3 = () => {
 
   const loadBranding = async () => {
     try {
-      const response = await axios.get(`${API_URL}/branding`);
+      const response = await axios.get(`${API_URL}/branding`, { withCredentials: true });
       if (response.data.font_name) {
         setFormData({
           font_name: response.data.font_name || 'Inter',
@@ -45,11 +45,11 @@ const OnboardingStep3 = () => {
     setLoading(true);
 
     try {
-      await axios.post(`${API_URL}/branding`, formData);
+      await axios.post(`${API_URL}/branding`, formData, { withCredentials: true });
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 4,
         completed_steps: {}
-      });
+      }, { withCredentials: true });
 
       toast.success('Branding preferences saved!');
       navigate('/onboarding/step-4');
