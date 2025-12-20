@@ -1,24 +1,34 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { DollarSign, Check, Tag, Loader2, X } from 'lucide-react';
+import { Check, Loader2, CreditCard, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
-
 const SubscriptionSettings = () => {
+  const [searchParams] = useSearchParams();
   const [subscription, setSubscription] = useState(null);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [discountCode, setDiscountCode] = useState('');
-  const [validatingCode, setValidatingCode] = useState(false);
-  const [appliedDiscount, setAppliedDiscount] = useState(null);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     loadSubscription();
-  }, []);
+    loadPlans();
+    
+    // Check if returning from Stripe
+    const sessionId = searchParams.get('session_id');
+    const status = searchParams.get('status');
+    
+    if (sessionId && status === 'success') {
+      checkPaymentStatus(sessionId);
+    } else if (status === 'cancelled') {
+      toast.info('Payment was cancelled');
+    }
+  }, [searchParams]);
 
   const loadSubscription = async () => {
     try {
@@ -31,8 +41,74 @@ const SubscriptionSettings = () => {
     }
   };
 
+  const loadPlans = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/stripe/plans`);
+      setPlans(response.data.plans);
+    } catch (error) {
+      console.error('Failed to load plans:', error);
+    }
+  };
+
+  const checkPaymentStatus = async (sessionId, attempts = 0) => {
+    const maxAttempts = 5;
+    
+    if (attempts >= maxAttempts) {
+      toast.error('Payment verification timed out. Please refresh the page.');
+      setCheckingPayment(false);
+      return;
+    }
+
+    setCheckingPayment(true);
+    
+    try {
+      const response = await axios.get(`${API_URL}/stripe/checkout-status/${sessionId}`, {
+        withCredentials: true
+      });
+      
+      if (response.data.payment_status === 'paid') {
+        toast.success(`Successfully upgraded to ${response.data.plan_name}!`);
+        await loadSubscription();
+        setCheckingPayment(false);
+        // Clean URL
+        window.history.replaceState({}, '', '/settings/subscription');
+      } else if (response.data.status === 'expired') {
+        toast.error('Payment session expired. Please try again.');
+        setCheckingPayment(false);
+      } else {
+        // Continue polling
+        setTimeout(() => checkPaymentStatus(sessionId, attempts + 1), 2000);
+      }
+    } catch (error) {
+      console.error('Payment status check error:', error);
+      toast.error('Error checking payment status');
+      setCheckingPayment(false);
+    }
+  };
+
+  const handleSubscribe = async (planId) => {
+    setLoading(true);
+    
+    try {
+      const response = await axios.post(`${API_URL}/stripe/create-checkout`, {
+        plan_id: planId,
+        origin_url: window.location.origin
+      }, {
+        withCredentials: true
+      });
+      
+      // Redirect to Stripe Checkout
+      window.location.href = response.data.checkout_url;
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error('Failed to start checkout. Please try again.');
+      setLoading(false);
+    }
+  };
+
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return;
+    if (!window.confirm('Are you sure you want to cancel your subscription?')) return;
 
     setLoading(true);
     try {
@@ -48,328 +124,111 @@ const SubscriptionSettings = () => {
     }
   };
 
-  const handleValidateDiscount = async (planPrice) => {
-    if (!discountCode.trim()) {
-      toast.error('Please enter a discount code');
-      return;
-    }
-
-    setValidatingCode(true);
-    try {
-      const response = await axios.post(`${API_URL}/discount-codes/validate`, {
-        code: discountCode.trim(),
-        plan_price: planPrice
-      }, {
-        withCredentials: true
-      });
-
-      if (response.data.valid) {
-        setAppliedDiscount(response.data);
-        toast.success(response.data.message);
-      } else {
-        setAppliedDiscount(null);
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      setAppliedDiscount(null);
-      toast.error('Failed to validate discount code');
-    } finally {
-      setValidatingCode(false);
-    }
-  };
-
-  const handleSubscribe = async (plan) => {
-    setLoading(true);
-    try {
-      // Apply discount if available
-      let finalPrice = plan.price;
-      if (appliedDiscount && appliedDiscount.valid) {
-        await axios.post(`${API_URL}/discount-codes/apply`, {
-          code: discountCode.trim(),
-          plan_price: plan.price
-        }, {
-          withCredentials: true
-        });
-        finalPrice = appliedDiscount.final_price;
-      }
-
-      // Create subscription
-      await axios.post(`${API_URL}/subscription`, {
-        plan_name: plan.name,
-        plan_price: finalPrice
-      }, {
-        withCredentials: true
-      });
-
-      toast.success(`Successfully subscribed to ${plan.name} plan!`);
-      setDiscountCode('');
-      setAppliedDiscount(null);
-      await loadSubscription();
-    } catch (error) {
-      toast.error('Failed to subscribe to plan');
-      console.error('Subscription error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const plans = [
-    {
-      name: 'Basic',
-      price: 19.99,
-      features: ['1 agent', '1 format (16:9)', 'Basic features']
-    },
-    {
-      name: 'Professional',
-      price: 39.99,
-      features: ['3 agents', 'All formats (16:9, 9:16, 1:1)', 'Premium photo enhancements', 'Virtual staging', 'Facebook & Instagram']
-    },
-    {
-      name: 'Enterprise',
-      price: 99.99,
-      features: ['Unlimited agents', 'All formats (16:9, 9:16, 1:1)', 'Premium photo enhancements', 'Virtual staging', 'All integrations', 'Priority support']
-    },
-    {
-      name: 'AI Caption',
-      price: 199.99,
-      features: ['Enterprise + AI captions', 'Premium photo enhancements', 'Virtual staging', 'Auto descriptions', 'Premium support']
-    }
-  ];
+  if (checkingPayment) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-brand-orange-500 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Verifying Payment...</h3>
+            <p className="text-gray-500">Please wait while we confirm your payment.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-6 h-6" />
-            Current Subscription
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {subscription ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-brand-orange-50 border border-brand-orange-200 rounded-lg">
-                <div>
-                  <p className="text-2xl font-bold text-brand-orange-600">{subscription.plan_name}</p>
-                  <p className="text-sm text-gray-600">Status: {subscription.status}</p>
-                  <p className="text-sm text-gray-600">€{subscription.plan_price}/month</p>
-                </div>
-                {subscription.status === 'active' && (
-                  <Button
-                    variant="outline"
-                    onClick={handleCancelSubscription}
-                    disabled={loading}
-                    className="border-red-500 text-red-500 hover:bg-red-50"
-                  >
-                    Cancel Subscription
-                  </Button>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">Subscription</h2>
+        <p className="text-gray-500">Manage your subscription plan</p>
+      </div>
+
+      {/* Current Plan */}
+      {subscription && (
+        <Card className="border-brand-orange-200 bg-brand-orange-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-brand-orange-500" />
+              Current Plan: {subscription.plan_name || subscription.plan || 'Free'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600">
+                  Status: <span className="font-medium capitalize">{subscription.subscription_status || subscription.status || 'Active'}</span>
+                </p>
+                {subscription.trial_active && (
+                  <p className="text-sm text-brand-orange-600">Trial ends: {new Date(subscription.trial_end_date).toLocaleDateString()}</p>
                 )}
               </div>
+              {subscription.subscription_status === 'active' && !subscription.trial_active && (
+                <Button variant="outline" onClick={handleCancelSubscription} disabled={loading}>
+                  Cancel Subscription
+                </Button>
+              )}
             </div>
-          ) : (
-            <p className="text-gray-500">No active subscription</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Plans</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Discount Code Section */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <Tag className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-blue-900">Have a discount code?</h3>
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter discount code"
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                className="flex-1"
-                disabled={validatingCode}
-              />
-              <Button
-                onClick={() => handleValidateDiscount(plans[0].price)}
-                disabled={validatingCode || !discountCode.trim()}
-                variant="outline"
-                className="border-blue-500 text-blue-600 hover:bg-blue-50"
-              >
-                {validatingCode ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Validating...
-                  </>
-                ) : (
-                  'Apply'
-                )}
-              </Button>
-            </div>
-            {appliedDiscount && appliedDiscount.valid && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                <p className="text-sm text-green-800 font-medium">
-                  ✓ Discount applied: {appliedDiscount.discount_type === 'percentage' 
-                    ? `${appliedDiscount.discount_value}% off` 
-                    : `€${appliedDiscount.discount_value} off`}
-                </p>
-                <p className="text-xs text-green-700 mt-1">
-                  You'll save €{appliedDiscount.discount_amount} on your subscription
-                </p>
+      {/* Available Plans */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {plans.map((plan) => (
+          <Card 
+            key={plan.id} 
+            className={`relative ${plan.id === 'premium' ? 'border-brand-orange-500 border-2' : ''}`}
+          >
+            {plan.id === 'premium' && (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-brand-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                  Most Popular
+                </span>
               </div>
             )}
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {plans.map(plan => {
-              const originalPrice = plan.price;
-              const discountedPrice = appliedDiscount?.valid ? (originalPrice - (originalPrice * (appliedDiscount.discount_value / 100))) : originalPrice;
-              const showDiscount = appliedDiscount?.valid;
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{plan.name}</span>
+                <span className="text-2xl font-bold">€{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2">
+                {plan.features.map((feature, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-600">{feature}</span>
+                  </li>
+                ))}
+              </ul>
               
-              return (
-                <div
-                  key={plan.name}
-                  className={`border-2 rounded-lg p-6 ${
-                    subscription?.plan_name === plan.name
-                      ? 'border-brand-orange-500 bg-brand-orange-50'
-                      : 'border-gray-200'
-                  }`}
-                >
-                  <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-                  <div className="mb-4">
-                    {showDiscount ? (
-                      <div>
-                        <p className="text-lg text-gray-400 line-through">€{originalPrice}</p>
-                        <p className="text-3xl font-bold text-green-600">
-                          €{discountedPrice.toFixed(2)}
-                          <span className="text-sm text-gray-500">/mo</span>
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-3xl font-bold">
-                        €{originalPrice}
-                        <span className="text-sm text-gray-500">/mo</span>
-                      </p>
-                    )}
-                  </div>
-                  <ul className="space-y-2 mb-6">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-green-500 mt-0.5" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  {subscription?.plan_name === plan.name ? (
-                    <Button disabled className="w-full">
-                      Current Plan
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={() => handleSubscribe(plan)}
-                      disabled={loading}
-                      className="w-full bg-brand-orange-500 hover:bg-brand-orange-600"
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        'Subscribe Now'
-                      )}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+              <Button 
+                className={`w-full ${plan.id === 'premium' ? 'bg-brand-orange-500 hover:bg-brand-orange-600' : ''}`}
+                variant={plan.id === 'premium' ? 'default' : 'outline'}
+                onClick={() => handleSubscribe(plan.id)}
+                disabled={loading || (subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active')}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                {subscription?.plan?.toLowerCase() === plan.name.toLowerCase() && subscription?.subscription_status === 'active' 
+                  ? 'Current Plan' 
+                  : `Subscribe to ${plan.name}`}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-          {/* Detailed Comparison Table */}
-          <div className="mt-12">
-            <h3 className="text-2xl font-bold mb-6 text-center">Detailed Feature Comparison</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-gray-200 p-3 text-left font-semibold">Feature</th>
-                    <th className="border border-gray-200 p-3 text-center font-semibold">Basic</th>
-                    <th className="border border-gray-200 p-3 text-center font-semibold">Professional</th>
-                    <th className="border border-gray-200 p-3 text-center font-semibold">Enterprise</th>
-                    <th className="border border-gray-200 p-3 text-center font-semibold bg-brand-orange-50">AI Caption</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="border border-gray-200 p-3 font-medium">Number of Agents</td>
-                    <td className="border border-gray-200 p-3 text-center">1</td>
-                    <td className="border border-gray-200 p-3 text-center">3</td>
-                    <td className="border border-gray-200 p-3 text-center">Unlimited</td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50">Unlimited</td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="border border-gray-200 p-3 font-medium">Video Formats</td>
-                    <td className="border border-gray-200 p-3 text-center">16:9 only</td>
-                    <td className="border border-gray-200 p-3 text-center">All (16:9, 9:16, 1:1)</td>
-                    <td className="border border-gray-200 p-3 text-center">All (16:9, 9:16, 1:1)</td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50">All (16:9, 9:16, 1:1)</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-gray-200 p-3 font-medium">Premium Photo Enhancement</td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="border border-gray-200 p-3 font-medium">Virtual Staging</td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr>
-                    <td className="border border-gray-200 p-3 font-medium">AI-Generated Captions</td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="border border-gray-200 p-3 font-medium">Custom Font Upload</td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><X className="w-5 h-5 text-red-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50"><Check className="w-5 h-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr>
-                    <td className="border border-gray-200 p-3 font-medium">Social Media Integrations</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">None</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">Facebook & Instagram</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">All platforms</td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50 text-sm">All platforms</td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="border border-gray-200 p-3 font-medium">Support</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">Email</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">Email</td>
-                    <td className="border border-gray-200 p-3 text-center text-sm">Priority</td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50 text-sm">Premium</td>
-                  </tr>
-                  <tr>
-                    <td className="border border-gray-200 p-3 font-medium font-bold">Monthly Price</td>
-                    <td className="border border-gray-200 p-3 text-center font-bold">€19.99</td>
-                    <td className="border border-gray-200 p-3 text-center font-bold">€39.99</td>
-                    <td className="border border-gray-200 p-3 text-center font-bold">€99.99</td>
-                    <td className="border border-gray-200 p-3 text-center bg-brand-orange-50 font-bold">€199.99</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Payment Security Notice */}
+      <div className="text-center text-sm text-gray-500">
+        <p>🔒 Secure payment powered by Stripe</p>
+        <p>You can cancel your subscription at any time</p>
+      </div>
     </div>
   );
 };
