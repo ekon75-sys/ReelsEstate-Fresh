@@ -2802,44 +2802,116 @@ async def generate_project_video(
                 photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
                 all_clips.append(photo_clip)
             
-            # === CREATE OUTRO ===
-            outro_img = Image.new('RGB', (width, height), color=main_color)
+            # === CREATE OUTRO (5 seconds) ===
+            # Adaptive layout based on format
+            is_vertical = format_type == "9:16"
+            is_square = format_type == "1:1"
+            
+            outro_img = Image.new('RGB', (width, height), color=brand_rgb)
             draw = ImageDraw.Draw(outro_img)
             
-            # Add agent info or generic outro
-            if agent:
-                agent_name = agent.get("name", "")
-                agent_phone = agent.get("phone", "")
-                agent_email = agent.get("email", "")
+            # Get agent photo if available
+            agent_photo_img = None
+            if agent and agent.get("photo_url"):
+                agent_photo_url = agent.get("photo_url", "")
+                if agent_photo_url.startswith("data:"):
+                    try:
+                        header, photo_b64 = agent_photo_url.split(",", 1)
+                        photo_data = base64.b64decode(photo_b64)
+                        agent_photo_img = Image.open(io.BytesIO(photo_data)).convert("RGBA")
+                    except:
+                        agent_photo_img = None
+            
+            if is_vertical:
+                # Vertical layout (9:16)
+                # Logo at top
+                if logo_img:
+                    logo_max_w = int(width * 0.5)
+                    logo_max_h = int(height * 0.12)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_x = (width - logo_size[0]) // 2
+                    logo_y = int(height * 0.08)
+                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
                 
-                y_pos = height // 2 - 80
+                # Agent photo in center (circular)
+                if agent_photo_img:
+                    photo_size = int(width * 0.5)
+                    agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
+                    # Create circular mask
+                    mask = Image.new('L', (photo_size, photo_size), 0)
+                    mask_draw = ImageDraw.Draw(mask)
+                    mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
+                    photo_x = (width - photo_size) // 2
+                    photo_y = int(height * 0.28)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
                 
-                if agent_name:
-                    bbox = draw.textbbox((0, 0), agent_name, font=font_large)
-                    x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, y_pos), agent_name, fill="white", font=font_large)
-                    y_pos += 70
-                
-                if agent_phone:
-                    bbox = draw.textbbox((0, 0), agent_phone, font=font_small)
-                    x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, y_pos), agent_phone, fill="white", font=font_small)
-                    y_pos += 40
-                
-                if agent_email:
-                    bbox = draw.textbbox((0, 0), agent_email, font=font_small)
-                    x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, y_pos), agent_email, fill="white", font=font_small)
+                # Agent info below
+                y_pos = int(height * 0.58)
+                if agent:
+                    if agent.get("name"):
+                        bbox = draw.textbbox((0, 0), agent["name"], font=font_large)
+                        x = (width - (bbox[2] - bbox[0])) // 2
+                        draw.text((x, y_pos), agent["name"], fill="white", font=font_large)
+                        y_pos += int(height * 0.08)
+                    if agent.get("phone"):
+                        bbox = draw.textbbox((0, 0), agent["phone"], font=font_medium)
+                        x = (width - (bbox[2] - bbox[0])) // 2
+                        draw.text((x, y_pos), agent["phone"], fill="white", font=font_medium)
+                        y_pos += int(height * 0.05)
+                    if agent.get("email"):
+                        bbox = draw.textbbox((0, 0), agent["email"], font=font_small)
+                        x = (width - (bbox[2] - bbox[0])) // 2
+                        draw.text((x, y_pos), agent["email"], fill="white", font=font_small)
             else:
-                # Generic outro
-                text = "Thank you for watching"
-                bbox = draw.textbbox((0, 0), text, font=font_large)
-                x = (width - (bbox[2] - bbox[0])) // 2
-                draw.text((x, height // 2 - 30), text, fill="white", font=font_large)
+                # Horizontal/Square layout (16:9 or 1:1)
+                # Logo on left side
+                left_margin = int(width * 0.08)
+                
+                if logo_img:
+                    logo_max_w = int(width * 0.25)
+                    logo_max_h = int(height * 0.2)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_y = int(height * 0.1)
+                    outro_img.paste(logo_resized, (left_margin, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                
+                # Agent photo on left (circular)
+                if agent_photo_img:
+                    photo_size = int(height * 0.35)
+                    agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
+                    mask = Image.new('L', (photo_size, photo_size), 0)
+                    mask_draw = ImageDraw.Draw(mask)
+                    mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
+                    photo_x = left_margin + int(width * 0.05)
+                    photo_y = int(height * 0.4)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
+                
+                # Agent info on right side
+                text_x = int(width * 0.45)
+                y_pos = int(height * 0.35)
+                
+                if agent:
+                    if agent.get("name"):
+                        draw.text((text_x, y_pos), agent["name"], fill="white", font=font_large)
+                        y_pos += int(height * 0.12)
+                    if agent.get("phone"):
+                        draw.text((text_x, y_pos), agent["phone"], fill="white", font=font_medium)
+                        y_pos += int(height * 0.08)
+                    if agent.get("email"):
+                        draw.text((text_x, y_pos), agent["email"], fill="white", font=font_small)
+                else:
+                    # No agent - show generic message
+                    text = "Bedankt voor het kijken"
+                    bbox = draw.textbbox((0, 0), text, font=font_large)
+                    x = (width - (bbox[2] - bbox[0])) // 2
+                    draw.text((x, height // 2), text, fill="white", font=font_large)
             
             outro_path = os_module.path.join(temp_dir, "outro.jpg")
             outro_img.save(outro_path, "JPEG", quality=95)
-            outro_clip = ImageClip(outro_path, duration=2)
+            outro_clip = ImageClip(outro_path, duration=5)
             all_clips.append(outro_clip)
             
             # === CONCATENATE ALL CLIPS ===
