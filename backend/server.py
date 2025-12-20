@@ -2357,6 +2357,87 @@ async def upload_project_music(
     return {"status": "success", "music_url": music_url}
 
 # ============================================
+# GRIDFS VIDEO STREAMING ENDPOINT
+# ============================================
+
+@app.get("/api/videos/{video_id}/stream")
+async def stream_video(video_id: str):
+    """Stream a video from GridFS"""
+    try:
+        fs = get_gridfs_bucket()
+        
+        # Find the file in GridFS
+        cursor = fs.find({"metadata.video_id": video_id})
+        file_doc = await cursor.to_list(length=1)
+        
+        if not file_doc:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        file_id = file_doc[0]["_id"]
+        filename = file_doc[0].get("filename", f"{video_id}.mp4")
+        
+        # Stream the file
+        async def video_streamer():
+            grid_out = await fs.open_download_stream(file_id)
+            while True:
+                chunk = await grid_out.read(1024 * 1024)  # 1MB chunks
+                if not chunk:
+                    break
+                yield chunk
+        
+        return StreamingResponse(
+            video_streamer(),
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": f"inline; filename={filename}",
+                "Accept-Ranges": "bytes"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Video stream error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stream video")
+
+@app.get("/api/videos/{video_id}/download")
+async def download_video(video_id: str):
+    """Download a video from GridFS"""
+    try:
+        fs = get_gridfs_bucket()
+        db = get_database()
+        
+        # Get video info from database
+        video = await db.project_videos.find_one({"id": video_id}, {"_id": 0})
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        # Find the file in GridFS
+        cursor = fs.find({"metadata.video_id": video_id})
+        file_doc = await cursor.to_list(length=1)
+        
+        if not file_doc:
+            raise HTTPException(status_code=404, detail="Video file not found")
+        
+        file_id = file_doc[0]["_id"]
+        
+        # Read the entire file
+        grid_out = await fs.open_download_stream(file_id)
+        video_data = await grid_out.read()
+        
+        return Response(
+            content=video_data,
+            media_type="video/mp4",
+            headers={
+                "Content-Disposition": f"attachment; filename=video_{video_id}.mp4"
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Video download error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download video")
+
+# ============================================
 # PROJECT VIDEOS ENDPOINTS
 # ============================================
 
