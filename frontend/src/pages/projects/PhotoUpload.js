@@ -110,8 +110,9 @@ const SortablePhotoCard = ({ photo, index, onDelete, onEnhance, onUndoEnhance, o
           <div className="space-y-1">
             <Label className="text-xs">Caption (optional)</Label>
             <Input
+              key={`caption-${photo.id}-${photo.enhanced}`}
               placeholder="e.g., Spacious living room"
-              defaultValue={photo.caption || ''}
+              defaultValue={photo.caption === 'Enhanced' || photo.caption === 'Virtually Staged' ? '' : (photo.caption || '')}
               onBlur={(e) => onUpdateCaption(photo.id, e.target.value)}
               className="text-sm"
             />
