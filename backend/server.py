@@ -1898,9 +1898,9 @@ async def get_subscription_plans():
     return {
         "plans": [
             {
-                "id": "starter",
-                "name": "Starter",
-                "price": 29.00,
+                "id": "basic",
+                "name": "Basic",
+                "price": 19.99,
                 "currency": "EUR",
                 "features": [
                     "5 video creaties per maand",
@@ -1909,16 +1909,42 @@ async def get_subscription_plans():
                 ]
             },
             {
-                "id": "premium",
-                "name": "Premium",
-                "price": 79.00,
+                "id": "professional",
+                "name": "Professional",
+                "price": 39.99,
+                "currency": "EUR",
+                "features": [
+                    "20 video creaties per maand",
+                    "Alle templates",
+                    "Priority support",
+                    "Custom branding"
+                ]
+            },
+            {
+                "id": "enterprise",
+                "name": "Enterprise",
+                "price": 99.99,
                 "currency": "EUR",
                 "features": [
                     "Onbeperkt video creaties",
                     "Alle premium templates",
-                    "Priority support",
+                    "24/7 Priority support",
                     "Custom branding",
-                    "Analytics dashboard"
+                    "Analytics dashboard",
+                    "Dedicated account manager"
+                ]
+            },
+            {
+                "id": "ai_caption",
+                "name": "AI Caption",
+                "price": 199.99,
+                "currency": "EUR",
+                "features": [
+                    "Alles in Enterprise",
+                    "AI-gegenereerde captions",
+                    "Automatische ondertiteling",
+                    "Multi-language support",
+                    "Advanced AI features"
                 ]
             }
         ]
