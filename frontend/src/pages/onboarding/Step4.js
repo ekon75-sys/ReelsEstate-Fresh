@@ -26,7 +26,7 @@ const OnboardingStep4 = () => {
 
   const loadSocialMedia = async () => {
     try {
-      const response = await axios.get(`${API_URL}/social-media`);
+      const response = await axios.get(`${API_URL}/social-media`, { withCredentials: true });
       const connections = {};
       response.data.forEach(social => {
         connections[social.platform] = social.connected;
@@ -40,22 +40,15 @@ const OnboardingStep4 = () => {
   const handleConnect = async (platform) => {
     if (platform === 'Facebook') {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/facebook/auth-url`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_URL}/facebook/auth-url`, { withCredentials: true });
         window.location.href = response.data.auth_url;
       } catch (error) {
         toast.error('Failed to initiate Facebook connection');
       }
     } else if (platform === 'Instagram') {
       try {
-        const token = localStorage.getItem('token');
-        
         // Fetch Instagram accounts linked to Facebook
-        const response = await axios.get(`${API_URL}/instagram/accounts`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_URL}/instagram/accounts`, { withCredentials: true });
         
         const accounts = response.data.instagram_accounts;
         
@@ -72,9 +65,7 @@ const OnboardingStep4 = () => {
             username: account.username,
             facebook_page_id: account.facebook_page_id,
             page_access_token: account.page_access_token
-          }, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          }, { withCredentials: true });
           
           setConnected(prev => ({ ...prev, Instagram: true }));
           toast.success(`Connected @${account.username} successfully!`);
@@ -87,9 +78,7 @@ const OnboardingStep4 = () => {
             username: account.username,
             facebook_page_id: account.facebook_page_id,
             page_access_token: account.page_access_token
-          }, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          }, { withCredentials: true });
           
           setConnected(prev => ({ ...prev, Instagram: true }));
           toast.success(`Connected @${account.username} successfully!`);
@@ -100,30 +89,21 @@ const OnboardingStep4 = () => {
       }
     } else if (platform === 'YouTube') {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/youtube/auth-url`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_URL}/youtube/auth-url`, { withCredentials: true });
         window.location.href = response.data.auth_url;
       } catch (error) {
         toast.error('Kan YouTube verbinding niet starten');
       }
     } else if (platform === 'TikTok') {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/tiktok/auth-url`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_URL}/tiktok/auth-url`, { withCredentials: true });
         window.location.href = response.data.auth_url;
       } catch (error) {
         toast.error('Kan TikTok verbinding niet starten');
       }
     } else if (platform === 'LinkedIn') {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/linkedin/auth-url`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await axios.get(`${API_URL}/linkedin/auth-url`, { withCredentials: true });
         window.location.href = response.data.auth_url;
       } catch (error) {
         toast.error('Kan LinkedIn verbinding niet starten');
@@ -135,12 +115,9 @@ const OnboardingStep4 = () => {
 
   const handleDisconnect = async (platform) => {
     try {
-      const token = localStorage.getItem('token');
       await axios.post(`${API_URL}/social-media/disconnect`, {
         platform
-      }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      }, { withCredentials: true });
       
       setConnected(prev => ({ ...prev, [platform]: false }));
       toast.success(`${platform} disconnected successfully!`);
@@ -158,7 +135,7 @@ const OnboardingStep4 = () => {
       await axios.put(`${API_URL}/onboarding/progress`, {
         current_step: 5,
         completed_steps: {}
-      });
+      }, { withCredentials: true });
       navigate('/onboarding/step-5');
     } catch (error) {
       toast.error('Failed to proceed');
