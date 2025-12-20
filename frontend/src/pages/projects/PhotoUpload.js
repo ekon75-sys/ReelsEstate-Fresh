@@ -64,7 +64,9 @@ const SortablePhotoCard = ({ photo, index, onDelete, onEnhance, onUndoEnhance, o
       <Card className="overflow-hidden">
         <div className="relative aspect-video">
           <img
-            src={process.env.REACT_APP_BACKEND_URL + (photo.enhanced_url || photo.original_url)}
+            src={(photo.enhanced_url || photo.original_url)?.startsWith('data:') 
+              ? (photo.enhanced_url || photo.original_url)
+              : process.env.REACT_APP_BACKEND_URL + (photo.enhanced_url || photo.original_url)}
             alt={`Photo ${index + 1}`}
             className="w-full h-full object-cover"
           />
