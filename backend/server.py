@@ -1647,6 +1647,243 @@ async def apply_discount_code(request: DiscountValidateRequest, authorization: s
     
     raise HTTPException(status_code=400, detail="Invalid discount code")
 
+# ============================================
+# STRIPE PAYMENT ENDPOINTS
+# ============================================
+
+class CreateCheckoutRequest(BaseModel):
+    plan_id: str  # "starter" or "premium"
+    origin_url: str  # Frontend origin URL
+
+@app.post("/api/stripe/create-checkout")
+async def create_stripe_checkout(request: Request, checkout_data: CreateCheckoutRequest, authorization: str = Header(None)):
+    """Create a Stripe checkout session for subscription"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Validate plan
+    if checkout_data.plan_id not in SUBSCRIPTION_PLANS:
+        raise HTTPException(status_code=400, detail="Invalid plan selected")
+    
+    plan = SUBSCRIPTION_PLANS[checkout_data.plan_id]
+    
+    # Initialize Stripe
+    api_key = os.getenv("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    
+    # Build URLs from frontend origin
+    success_url = f"{checkout_data.origin_url}/settings/subscription?session_id={{CHECKOUT_SESSION_ID}}&status=success"
+    cancel_url = f"{checkout_data.origin_url}/settings/subscription?status=cancelled"
+    
+    # Create checkout session
+    checkout_request = CheckoutSessionRequest(
+        amount=plan["price"],
+        currency=plan["currency"],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "user_id": user["id"],
+            "user_email": user["email"],
+            "plan_id": checkout_data.plan_id,
+            "plan_name": plan["name"]
+        }
+    )
+    
+    try:
+        session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
+        
+        # Create payment transaction record
+        transaction = {
+            "id": str(ObjectId()),
+            "session_id": session.session_id,
+            "user_id": user["id"],
+            "user_email": user["email"],
+            "plan_id": checkout_data.plan_id,
+            "plan_name": plan["name"],
+            "amount": plan["price"],
+            "currency": plan["currency"],
+            "payment_status": "pending",
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.payment_transactions.insert_one(transaction)
+        
+        return {
+            "checkout_url": session.url,
+            "session_id": session.session_id
+        }
+        
+    except Exception as e:
+        print(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create checkout session: {str(e)}")
+
+@app.get("/api/stripe/checkout-status/{session_id}")
+async def get_stripe_checkout_status(request: Request, session_id: str, authorization: str = Header(None)):
+    """Get the status of a Stripe checkout session"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Verify this session belongs to the user
+    transaction = await db.payment_transactions.find_one(
+        {"session_id": session_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # If already processed, return cached status
+    if transaction.get("payment_status") == "paid":
+        return {
+            "status": "complete",
+            "payment_status": "paid",
+            "plan_name": transaction.get("plan_name"),
+            "amount": transaction.get("amount"),
+            "currency": transaction.get("currency")
+        }
+    
+    # Check with Stripe
+    api_key = os.getenv("STRIPE_API_KEY")
+    webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    
+    try:
+        status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+        
+        # Update transaction status
+        new_status = "paid" if status.payment_status == "paid" else status.payment_status
+        
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {
+                "payment_status": new_status,
+                "stripe_status": status.status,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        # If payment successful, activate subscription
+        if status.payment_status == "paid":
+            plan_id = transaction.get("plan_id")
+            plan = SUBSCRIPTION_PLANS.get(plan_id, {})
+            
+            await db.users.update_one(
+                {"id": user["id"]},
+                {"$set": {
+                    "plan": plan.get("name", "Starter"),
+                    "plan_price": plan.get("price", 0),
+                    "subscription_status": "active",
+                    "trial_active": False,
+                    "subscription_activated_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+        
+        return {
+            "status": status.status,
+            "payment_status": status.payment_status,
+            "amount": status.amount_total / 100,  # Convert from cents
+            "currency": status.currency,
+            "plan_name": transaction.get("plan_name")
+        }
+        
+    except Exception as e:
+        print(f"Stripe status check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to check payment status: {str(e)}")
+
+@app.post("/api/webhook/stripe")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events"""
+    try:
+        body = await request.body()
+        signature = request.headers.get("Stripe-Signature")
+        
+        api_key = os.getenv("STRIPE_API_KEY")
+        webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
+        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+        
+        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        
+        db = get_database()
+        
+        # Update transaction based on webhook event
+        if webhook_response.session_id:
+            transaction = await db.payment_transactions.find_one(
+                {"session_id": webhook_response.session_id},
+                {"_id": 0}
+            )
+            
+            if transaction:
+                # Update transaction status
+                await db.payment_transactions.update_one(
+                    {"session_id": webhook_response.session_id},
+                    {"$set": {
+                        "payment_status": webhook_response.payment_status,
+                        "event_type": webhook_response.event_type,
+                        "event_id": webhook_response.event_id,
+                        "updated_at": datetime.now(timezone.utc)
+                    }}
+                )
+                
+                # If payment completed, activate subscription
+                if webhook_response.payment_status == "paid":
+                    user_id = transaction.get("user_id")
+                    plan_id = transaction.get("plan_id")
+                    plan = SUBSCRIPTION_PLANS.get(plan_id, {})
+                    
+                    await db.users.update_one(
+                        {"id": user_id},
+                        {"$set": {
+                            "plan": plan.get("name", "Starter"),
+                            "plan_price": plan.get("price", 0),
+                            "subscription_status": "active",
+                            "trial_active": False,
+                            "subscription_activated_at": datetime.now(timezone.utc),
+                            "updated_at": datetime.now(timezone.utc)
+                        }}
+                    )
+        
+        return {"status": "success"}
+        
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/stripe/plans")
+async def get_subscription_plans():
+    """Get available subscription plans"""
+    return {
+        "plans": [
+            {
+                "id": "starter",
+                "name": "Starter",
+                "price": 29.00,
+                "currency": "EUR",
+                "features": [
+                    "5 video creaties per maand",
+                    "Basis templates",
+                    "Email support"
+                ]
+            },
+            {
+                "id": "premium",
+                "name": "Premium",
+                "price": 79.00,
+                "currency": "EUR",
+                "features": [
+                    "Onbeperkt video creaties",
+                    "Alle premium templates",
+                    "Priority support",
+                    "Custom branding",
+                    "Analytics dashboard"
+                ]
+            }
+        ]
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
