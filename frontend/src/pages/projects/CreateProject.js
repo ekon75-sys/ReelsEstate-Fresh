@@ -23,7 +23,7 @@ const CreateProject = () => {
       const response = await axios.post(`${API_URL}/projects`, {
         title,
         status: 'draft'
-      });
+      }, { withCredentials: true });
       toast.success('Project created!');
       navigate(`/projects/${response.data.id}/photos`);
     } catch (error) {
