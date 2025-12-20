@@ -532,49 +532,24 @@ const GenerateVideo = () => {
                               <p className="font-medium">{video.format} - {video.quality?.toUpperCase() || 'HD'}</p>
                               <p className="text-sm text-gray-500">
                                 {video.width && video.height ? `${video.width}x${video.height}` : ''} 
-                                {video.file_size_mb ? ` • ${(video.file_size / 1024 / 1024).toFixed(1)}MB` : ''}
+                                {video.file_size ? ` • ${(video.file_size / 1024 / 1024).toFixed(1)}MB` : ''}
                               </p>
                             </div>
                             <button
-                            onClick={() => {
-                              try {
-                                setDownloading(video.id);
-                                const filename = `${project?.title?.replace(/[^a-z0-9]/gi, '_') || 'video'}_${video.format}.mp4`;
-                                
-                                if (video.file_url?.startsWith('data:')) {
-                                  // Base64 video - create download link
-                                  const link = document.createElement('a');
-                                  link.href = video.file_url;
-                                  link.download = filename;
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                  toast.success('Video download started!');
-                                } else {
-                                  // Regular URL - open in new tab
-                                  window.open(process.env.REACT_APP_BACKEND_URL + video.file_url, '_blank');
-                                  toast.info('Video opened - right-click to save');
-                                }
-                              } catch (error) {
-                                console.error('Download error:', error);
-                                toast.error(`Download failed: ${error.message}`);
-                              } finally {
-                                setDownloading(null);
-                              }
-                            }}
-                            disabled={downloading === video.id}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-orange-500 rounded-md hover:bg-brand-orange-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Click to download"
-                          >
+                              onClick={() => handleDownload(video)}
+                              disabled={downloading === video.id}
+                              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand-orange-500 rounded-md hover:bg-brand-orange-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Click to download"
+                            >
                             {downloading === video.id ? (
                               <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Opening...
+                                Downloading...
                               </>
                             ) : (
                               <>
                                 <Download className="w-4 h-4 mr-2" />
-                                Open & Download
+                                Download
                               </>
                             )}
                           </button>
