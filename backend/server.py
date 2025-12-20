@@ -1492,3 +1492,4 @@ async def apply_discount_code(request: DiscountValidateRequest, authorization: s
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+# Redeploy trigger: Sat Dec 20 16:50:54 UTC 2025
