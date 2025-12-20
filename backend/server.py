@@ -1654,7 +1654,7 @@ async def apply_discount_code(request: DiscountValidateRequest, authorization: s
 # ============================================
 
 class CreateCheckoutRequest(BaseModel):
-    plan_id: str  # "starter" or "premium"
+    plan_id: str  # "basic", "professional", "enterprise", "ai_caption"
     origin_url: str  # Frontend origin URL
 
 @app.post("/api/stripe/create-checkout")
@@ -1669,39 +1669,47 @@ async def create_stripe_checkout(request: Request, checkout_data: CreateCheckout
     
     plan = SUBSCRIPTION_PLANS[checkout_data.plan_id]
     
-    # Initialize Stripe
+    # Initialize Stripe with official SDK
     api_key = os.getenv("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Stripe not configured")
     
-    webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+    stripe.api_key = api_key
     
     # Build URLs from frontend origin
     success_url = f"{checkout_data.origin_url}/settings/subscription?session_id={{CHECKOUT_SESSION_ID}}&status=success"
     cancel_url = f"{checkout_data.origin_url}/settings/subscription?status=cancelled"
     
-    # Create checkout session
-    checkout_request = CheckoutSessionRequest(
-        amount=plan["price"],
-        currency=plan["currency"],
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata={
-            "user_id": user["id"],
-            "user_email": user["email"],
-            "plan_id": checkout_data.plan_id,
-            "plan_name": plan["name"]
-        }
-    )
-    
     try:
-        session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
+        # Create Stripe checkout session using official SDK
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": plan["currency"],
+                    "unit_amount": int(plan["price"] * 100),  # Convert to cents
+                    "product_data": {
+                        "name": f"ReelsEstate {plan['name']} Plan",
+                        "description": f"Monthly subscription to {plan['name']} plan"
+                    }
+                },
+                "quantity": 1
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "user_id": user["id"],
+                "user_email": user["email"],
+                "plan_id": checkout_data.plan_id,
+                "plan_name": plan["name"]
+            }
+        )
         
         # Create payment transaction record
         transaction = {
             "id": str(ObjectId()),
-            "session_id": session.session_id,
+            "session_id": session.id,
             "user_id": user["id"],
             "user_email": user["email"],
             "plan_id": checkout_data.plan_id,
@@ -1715,9 +1723,12 @@ async def create_stripe_checkout(request: Request, checkout_data: CreateCheckout
         
         return {
             "checkout_url": session.url,
-            "session_id": session.session_id
+            "session_id": session.id
         }
         
+    except stripe.error.StripeError as e:
+        print(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create checkout session: {str(e)}")
     except Exception as e:
         print(f"Stripe checkout error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create checkout session: {str(e)}")
