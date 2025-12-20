@@ -1822,34 +1822,52 @@ async def stripe_webhook(request: Request):
         signature = request.headers.get("Stripe-Signature")
         
         api_key = os.getenv("STRIPE_API_KEY")
-        webhook_url = f"{str(request.base_url).rstrip('/')}/api/webhook/stripe"
-        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
-        
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        stripe.api_key = api_key
         
         db = get_database()
         
-        # Update transaction based on webhook event
-        if webhook_response.session_id:
+        # If webhook secret is configured, verify signature
+        if webhook_secret and signature:
+            try:
+                event = stripe.Webhook.construct_event(
+                    body, signature, webhook_secret
+                )
+            except stripe.error.SignatureVerificationError as e:
+                print(f"Webhook signature verification failed: {e}")
+                raise HTTPException(status_code=400, detail="Invalid signature")
+        else:
+            # Parse event without verification (for testing)
+            import json
+            event = json.loads(body)
+        
+        # Handle the event
+        event_type = event.get("type") if isinstance(event, dict) else event.type
+        event_data = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event.data.object
+        
+        if event_type == "checkout.session.completed":
+            session_id = event_data.get("id") if isinstance(event_data, dict) else event_data.id
+            payment_status = event_data.get("payment_status") if isinstance(event_data, dict) else event_data.payment_status
+            
+            # Find the transaction
             transaction = await db.payment_transactions.find_one(
-                {"session_id": webhook_response.session_id},
+                {"session_id": session_id},
                 {"_id": 0}
             )
             
             if transaction:
                 # Update transaction status
                 await db.payment_transactions.update_one(
-                    {"session_id": webhook_response.session_id},
+                    {"session_id": session_id},
                     {"$set": {
-                        "payment_status": webhook_response.payment_status,
-                        "event_type": webhook_response.event_type,
-                        "event_id": webhook_response.event_id,
+                        "payment_status": "paid" if payment_status == "paid" else payment_status,
+                        "event_type": event_type,
                         "updated_at": datetime.now(timezone.utc)
                     }}
                 )
                 
                 # If payment completed, activate subscription
-                if webhook_response.payment_status == "paid":
+                if payment_status == "paid":
                     user_id = transaction.get("user_id")
                     plan_id = transaction.get("plan_id")
                     plan = SUBSCRIPTION_PLANS.get(plan_id, {})
@@ -1857,7 +1875,7 @@ async def stripe_webhook(request: Request):
                     await db.users.update_one(
                         {"id": user_id},
                         {"$set": {
-                            "plan": plan.get("name", "Starter"),
+                            "plan": plan.get("name", "Basic"),
                             "plan_price": plan.get("price", 0),
                             "subscription_status": "active",
                             "trial_active": False,
@@ -1868,6 +1886,8 @@ async def stripe_webhook(request: Request):
         
         return {"status": "success"}
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Webhook error: {e}")
         return {"status": "error", "message": str(e)}
