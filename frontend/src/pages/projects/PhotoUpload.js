@@ -363,7 +363,8 @@ const PhotoUpload = () => {
 
     try {
       await axios.post(`${API_URL}/projects/${projectId}/photos/${photoId}/enhance`, null, {
-        params: { enhancement_type: enhancementType }
+        params: { enhancement_type: enhancementType },
+        withCredentials: true
       });
       toast.success('Photo enhanced!');
       await loadPhotos();
