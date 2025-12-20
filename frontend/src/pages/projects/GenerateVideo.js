@@ -16,7 +16,9 @@ const GenerateVideo = () => {
   const { user } = useAuth();
   const [generating, setGenerating] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('16:9');
-  const [selectedQuality, setSelectedQuality] = useState('hd');
+  const [selectedQuality, setSelectedQuality] = useState('sd');
+  const [allowedQualities, setAllowedQualities] = useState([]);
+  const [userPlan, setUserPlan] = useState('Basic');
   const [videos, setVideos] = useState([]);
   const [project, setProject] = useState(null);
   const [downloading, setDownloading] = useState(null);
@@ -36,15 +38,37 @@ const GenerateVideo = () => {
   const [linkedinConnected, setLinkedinConnected] = useState(false);
   const [connectingLinkedin, setConnectingLinkedin] = useState(false);
   const [generatingMetadata, setGeneratingMetadata] = useState(false);
-  const [alteredContent, setAlteredContent] = useState(false); // Default: No
-  const [remixOption, setRemixOption] = useState('audio'); // Default: audio only
+  const [alteredContent, setAlteredContent] = useState(false);
+  const [remixOption, setRemixOption] = useState('audio');
 
-  const qualityOptions = [
-    { value: 'sd', label: 'SD (480p)', description: 'Snel, klein bestand' },
-    { value: 'hd', label: 'HD (720p)', description: 'Goede kwaliteit' },
-    { value: 'fullhd', label: 'Full HD (1080p)', description: 'Hoge kwaliteit' },
-    { value: '4k', label: '4K (2160p)', description: 'Ultra HD, groot bestand' }
-  ];
+  useEffect(() => {
+    loadProject();
+    loadVideos();
+    loadAllowedQualities();
+    checkYouTubeConnection();
+    checkInstagramConnection();
+    checkFacebookConnection();
+    checkLinkedInConnection();
+  }, [projectId]);
+
+  const loadAllowedQualities = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/user/allowed-qualities`, { withCredentials: true });
+      setAllowedQualities(response.data.qualities);
+      setUserPlan(response.data.user_plan);
+      // Set default quality to highest allowed
+      const highestAllowed = response.data.qualities.filter(q => q.allowed).pop();
+      if (highestAllowed) {
+        setSelectedQuality(highestAllowed.value);
+      }
+    } catch (error) {
+      console.error('Failed to load allowed qualities:', error);
+      // Fallback to basic qualities
+      setAllowedQualities([
+        { value: 'sd', label: 'SD (480p)', description: 'Snel, klein bestand', allowed: true }
+      ]);
+    }
+  };
 
   useEffect(() => {
     loadProject();
