@@ -397,6 +397,35 @@ async def logout(request: Request, response: Response):
     
     return {"status": "success", "message": "Logged out"}
 
+# Admin endpoint to reset onboarding (temporary)
+@app.post("/api/admin/reset-onboarding")
+async def reset_onboarding(request: Request):
+    """Reset user's onboarding step to 0"""
+    db = get_database()
+    
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    # Reset onboarding
+    result = await db.users.update_one(
+        {"id": session["user_id"]},
+        {"$set": {"onboarding_step": 0}}
+    )
+    
+    # Also try by email for old users
+    if result.modified_count == 0:
+        await db.users.update_one(
+            {"email": "ekon75@hotmail.com"},
+            {"$set": {"onboarding_step": 0}}
+        )
+    
+    return {"status": "success", "message": "Onboarding reset to step 0"}
+
 # Google OAuth endpoints
 @app.post("/api/auth/google/callback")
 async def google_oauth_callback(auth_data: GoogleAuthRequest):
