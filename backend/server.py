@@ -2582,6 +2582,7 @@ async def generate_project_video(
     import base64
     import tempfile
     import os as os_module
+    import io as io_module
     from moviepy import ImageClip, concatenate_videoclips, CompositeVideoClip, ColorClip
     from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
     
