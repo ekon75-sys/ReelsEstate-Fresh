@@ -1,57 +1,173 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Loader2 } from 'lucide-react';
+import { Video, Mail, Lock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const LoginPage = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [processingOAuth, setProcessingOAuth] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, setUserData } = useAuth();
 
   useEffect(() => {
+    // Check for session_id in URL fragment (from Emergent Auth)
+    const hash = window.location.hash;
+    if (hash && hash.includes('session_id=')) {
+      processEmergentAuth(hash);
+      return;
+    }
+    
     // Check if user is already logged in
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/auth/me`, {
-          withCredentials: true
-        });
-        if (response.data && response.data.user_id) {
-          // User is logged in, redirect based on onboarding status
-          const onboardingStep = response.data.onboarding_step || 0;
-          if (onboardingStep < 6) {
-            navigate(`/onboarding/step-${onboardingStep + 1}`);
-          } else {
-            navigate('/dashboard');
+    checkAuth();
+  }, []);
+
+  const processEmergentAuth = async (hash) => {
+    setProcessingOAuth(true);
+    try {
+      const sessionId = hash.split('session_id=')[1]?.split('&')[0];
+      
+      if (!sessionId) {
+        console.error('No session_id found in URL');
+        setCheckingSession(false);
+        setProcessingOAuth(false);
+        return;
+      }
+
+      console.log('Processing Emergent Auth session_id...');
+
+      // Exchange session_id for user data via Emergent Auth
+      const authResponse = await axios.get(
+        'https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data',
+        {
+          headers: {
+            'X-Session-ID': sessionId
           }
         }
-      } catch (error) {
-        // Not logged in, show login page
-        console.log('Not authenticated, showing login page');
-      } finally {
-        setCheckingSession(false);
+      );
+
+      const userData = authResponse.data;
+      console.log('Got user data from Emergent Auth:', userData.email);
+
+      // Send to our backend to create/update user and session
+      const backendResponse = await axios.post(
+        `${API_URL}/auth/emergent-session`,
+        {
+          user_id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          picture: userData.picture,
+          session_token: userData.session_token
+        },
+        {
+          withCredentials: true
+        }
+      );
+
+      console.log('Session stored in backend');
+      
+      // Update auth context
+      const user = backendResponse.data.user;
+      setUserData(user);
+
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Redirect based on onboarding status
+      const onboardingStep = user.onboarding_step || 0;
+      if (onboardingStep < 6) {
+        navigate(`/onboarding/step-${onboardingStep + 1}`);
+      } else {
+        navigate('/dashboard');
       }
-    };
+
+    } catch (error) {
+      console.error('Emergent Auth error:', error);
+      toast.error('Login failed. Please try again.');
+      // Clean URL on error
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setCheckingSession(false);
+      setProcessingOAuth(false);
+    }
+  };
+
+  const checkAuth = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/auth/me`, {
+        withCredentials: true
+      });
+      if (response.data && response.data.user_id) {
+        setUserData(response.data);
+        // User is logged in, redirect based on onboarding status
+        const onboardingStep = response.data.onboarding_step || 0;
+        if (onboardingStep < 6) {
+          navigate(`/onboarding/step-${onboardingStep + 1}`);
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    } catch (error) {
+      // Not logged in, show login page
+      console.log('Not authenticated, showing login page');
+    } finally {
+      setCheckingSession(false);
+    }
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     
-    checkAuth();
-  }, [navigate]);
+    try {
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password
+      }, {
+        withCredentials: true
+      });
+      
+      setUserData(response.data.user);
+      toast.success('Successfully logged in!');
+      
+      const onboardingStep = response.data.user.onboarding_step || 0;
+      if (onboardingStep < 6) {
+        navigate(`/onboarding/step-${onboardingStep + 1}`);
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
   const handleGoogleLogin = () => {
     setLoading(true);
     // Use Emergent Auth - redirect URL must be dynamic based on current origin
-    const redirectUrl = window.location.origin + '/dashboard';
+    const redirectUrl = window.location.origin + '/login';
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
-  if (checkingSession) {
+  if (checkingSession || processingOAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-orange-50 via-white to-brand-orange-50">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-orange-500" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">{processingOAuth ? 'Completing sign in...' : 'Loading...'}</p>
+        </div>
       </div>
     );
   }
@@ -75,6 +191,7 @@ const LoginPage = () => {
             <CardDescription>Sign in to continue to ReelsEstate</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            {/* Google Login Button */}
             <Button
               variant="outline"
               className="w-full h-12 text-base"
@@ -95,12 +212,64 @@ const LoginPage = () => {
               {loading ? 'Redirecting...' : 'Continue with Google'}
             </Button>
 
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">Or continue with email</span>
+              </div>
+            </div>
+
+            {/* Email/Password Login Form */}
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 bg-brand-orange-500 hover:bg-brand-orange-600"
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
+              </Button>
+            </form>
+
             <div className="text-center text-sm text-gray-500 pt-4">
               <p>By signing in, you agree to our</p>
               <p>
-                <Link to="/terms" className="text-brand-orange-600 hover:underline">Terms of Service</Link>
+                <Link to="/terms-of-service" className="text-brand-orange-600 hover:underline">Terms of Service</Link>
                 {' '}and{' '}
-                <Link to="/privacy" className="text-brand-orange-600 hover:underline">Privacy Policy</Link>
+                <Link to="/privacy-policy" className="text-brand-orange-600 hover:underline">Privacy Policy</Link>
               </p>
             </div>
           </CardContent>
@@ -108,12 +277,9 @@ const LoginPage = () => {
 
         <p className="text-center text-gray-500 text-sm mt-6">
           Don't have an account?{' '}
-          <button 
-            onClick={handleGoogleLogin}
-            className="text-brand-orange-600 hover:underline font-medium"
-          >
-            Sign up with Google
-          </button>
+          <Link to="/register" className="text-brand-orange-600 hover:underline font-medium">
+            Sign up
+          </Link>
         </p>
       </div>
     </div>
