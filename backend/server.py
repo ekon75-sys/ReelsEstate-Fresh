@@ -1405,7 +1405,7 @@ async def get_agents(request: Request, authorization: str = Header(None)):
     return agents
 
 @app.post("/api/agents")
-async def add_agent(agent: dict, authorization: str = Header(None)):
+async def add_agent(request: Request, agent: dict, authorization: str = Header(None)):
     """Add a new agent"""
     user = await get_current_user(request, authorization)
     db = get_database()
