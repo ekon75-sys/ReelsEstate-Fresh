@@ -146,21 +146,18 @@ async def get_current_user_from_request(request: Request):
         user = await db.users.find_one({"id": user_id}, {"_id": 0})
         if user:
             return user
-    except:
+    except Exception:
         pass
     
     raise HTTPException(status_code=401, detail="Invalid session")
 
-# Wrapper for backward compatibility
-async def get_current_user(request: Request, authorization: str = Header(None)):
-    """Legacy function - kept for backward compatibility"""
-    raise HTTPException(status_code=401, detail="Use session cookie authentication")
+# Create a dependency type
+CurrentUser = Annotated[dict, Depends(get_current_user_from_request)]
 
 # Get current user endpoint
 @app.get("/api/auth/me")
-async def get_me(request: Request, authorization: str = Header(None)):
+async def get_me(user: CurrentUser):
     """Get current authenticated user"""
-    user = await get_current_user_from_request(request)
     return UserResponse(
         id=user["id"],
         email=user["email"],
