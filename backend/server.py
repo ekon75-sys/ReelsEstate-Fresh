@@ -2452,7 +2452,7 @@ async def generate_project_video(
             
             intro_path = os_module.path.join(temp_dir, "intro.jpg")
             intro_img.save(intro_path, "JPEG", quality=95)
-            intro_clip = ImageClip(intro_path, duration=3)
+            intro_clip = ImageClip(intro_path, duration=2)
             all_clips.append(intro_clip)
             
             # === PROCESS PHOTOS WITH KEN BURNS EFFECT ===
