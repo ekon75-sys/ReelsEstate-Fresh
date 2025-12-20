@@ -2405,15 +2405,15 @@ async def generate_project_video(
                 agent = a
                 break
     
-    # Determine video dimensions based on format
+    # Determine video dimensions based on format - use lower resolution for smaller file size
     if format_type == "16:9":
-        width, height = 1280, 720
+        width, height = 854, 480  # 480p for smaller file size
     elif format_type == "9:16":
-        width, height = 720, 1280
+        width, height = 480, 854
     elif format_type == "1:1":
-        width, height = 720, 720
+        width, height = 480, 480
     else:
-        width, height = 1280, 720
+        width, height = 854, 480
     
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
