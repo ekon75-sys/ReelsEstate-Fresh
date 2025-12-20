@@ -309,7 +309,7 @@ const GenerateVideo = () => {
 
   const loadProject = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects/${projectId}`);
+      const response = await axios.get(`${API_URL}/projects/${projectId}`, { withCredentials: true });
       setProject(response.data);
     } catch (error) {
       console.error('Failed to load project:', error);
@@ -318,7 +318,7 @@ const GenerateVideo = () => {
 
   const loadVideos = async () => {
     try {
-      const response = await axios.get(`${API_URL}/projects/${projectId}/videos`);
+      const response = await axios.get(`${API_URL}/projects/${projectId}/videos`, { withCredentials: true });
       setVideos(response.data);
     } catch (error) {
       console.error('Failed to load videos:', error);
