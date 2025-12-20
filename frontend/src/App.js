@@ -11,6 +11,7 @@ import FacebookCallback from '@/pages/FacebookCallback';
 import YouTubeCallback from '@/pages/YouTubeCallback';
 import TikTokCallback from '@/pages/TikTokCallback';
 import LinkedInCallback from '@/pages/LinkedInCallback';
+import PaymentSuccess from '@/pages/PaymentSuccess';
 import DashboardPage from '@/pages/DashboardPage';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import TermsOfService from '@/pages/TermsOfService';
@@ -52,6 +53,7 @@ function AppRouter() {
       <Route path="/auth/youtube/callback" element={<YouTubeCallback />} />
       <Route path="/auth/tiktok/callback" element={<TikTokCallback />} />
       <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/data-deletion" element={<DataDeletion />} />
