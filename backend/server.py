@@ -358,6 +358,10 @@ async def auth_me(request: Request, authorization: str = Header(None)):
     user = await db.users.find_one({"id": session["user_id"]}, {"_id": 0})
     
     if not user:
+        # Try finding by old id format
+        user = await db.users.find_one({"email": "ekon75@hotmail.com"}, {"_id": 0})
+    
+    if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
     return {
