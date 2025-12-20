@@ -547,7 +547,6 @@ class OnboardingProgressRequest(BaseModel):
 @app.get("/api/business-info")
 async def get_business_info(request: Request, authorization: str = Header(None)):
     """Get business information"""
-    user = await get_current_user_from_request(request)
     
     business_info = user.get("business_info", {})
     return business_info
@@ -555,7 +554,6 @@ async def get_business_info(request: Request, authorization: str = Header(None))
 @app.post("/api/business-info")
 async def save_business_info(business_info: BusinessInfoRequest):
     """Save business information"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Update user with business info
@@ -572,7 +570,6 @@ async def save_business_info(business_info: BusinessInfoRequest):
 @app.put("/api/onboarding/progress")
 async def update_onboarding_progress(progress: OnboardingProgressRequest):
     """Update onboarding progress"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Update user onboarding progress
@@ -590,7 +587,6 @@ async def update_onboarding_progress(progress: OnboardingProgressRequest):
 @app.get("/api/onboarding/progress")
 async def get_onboarding_progress(request: Request, authorization: str = Header(None)):
     """Get onboarding progress"""
-    user = await get_current_user_from_request(request)
     
     return {
         "current_step": user.get("onboarding_step", 0),
@@ -601,7 +597,6 @@ async def get_onboarding_progress(request: Request, authorization: str = Header(
 @app.post("/api/upload/logo")
 async def upload_logo(request: Request, file: UploadFile = File(...)):
     """Upload company logo - stores as base64 in database"""
-    user = await get_current_user_from_request(request)
     
     # Validate file type
     allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"]
@@ -631,7 +626,6 @@ async def upload_logo(request: Request, file: UploadFile = File(...)):
 @app.get("/api/branding")
 async def get_branding(request: Request, authorization: str = Header(None)):
     """Get user branding information"""
-    user = await get_current_user_from_request(request)
     
     return {
         "logo_url": user.get("logo_url", ""),
@@ -650,7 +644,6 @@ class BrandingRequest(BaseModel):
 @app.post("/api/branding")
 async def save_branding(branding: BrandingRequest):
     """Save user branding preferences"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Update user with branding preferences
@@ -671,7 +664,6 @@ async def save_branding(branding: BrandingRequest):
 @app.get("/api/facebook/auth-url")
 async def get_facebook_auth_url(request: Request, authorization: str = Header(None)):
     """Generate Facebook OAuth URL"""
-    user = await get_current_user_from_request(request)
     
     facebook_app_id = os.getenv("FACEBOOK_APP_ID")
     redirect_uri = "https://reels-estate.app/auth/facebook/callback"
@@ -752,7 +744,6 @@ async def facebook_callback(code: str, state: str):
 @app.get("/api/instagram/accounts")
 async def get_instagram_accounts(request: Request, authorization: str = Header(None)):
     """Get Instagram Business accounts linked to user's Facebook Pages"""
-    user = await get_current_user_from_request(request)
     
     if not user.get("facebook_access_token"):
         raise HTTPException(status_code=401, detail="Facebook not connected")
@@ -827,7 +818,6 @@ async def connect_instagram_account(
     authorization: str = Header(None)
 ):
     """Store Instagram account connection"""
-    user = await get_current_user_from_request(request)
     
     db = get_database()
     
@@ -851,7 +841,6 @@ async def connect_instagram_account(
 @app.get("/api/social-media")
 async def get_social_media_connections(request: Request, authorization: str = Header(None)):
     """Get user's social media connections"""
-    user = await get_current_user_from_request(request)
     
     connections = [
         {
@@ -884,7 +873,6 @@ class DisconnectRequest(BaseModel):
 @app.post("/api/social-media/disconnect")
 async def disconnect_social_media(request: DisconnectRequest):
     """Disconnect a social media platform"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     platform = request.platform
@@ -923,37 +911,31 @@ async def disconnect_social_media(request: DisconnectRequest):
 @app.get("/api/auth/facebook/status")
 async def get_facebook_status(request: Request, authorization: str = Header(None)):
     """Check Facebook connection status"""
-    user = await get_current_user_from_request(request)
     return {"connected": user.get("facebook_connected", False)}
 
 @app.get("/api/auth/instagram/status")
 async def get_instagram_status(request: Request, authorization: str = Header(None)):
     """Check Instagram connection status"""
-    user = await get_current_user_from_request(request)
     return {"connected": user.get("instagram_connected", False)}
 
 @app.get("/api/auth/youtube/status")
 async def get_youtube_status(request: Request, authorization: str = Header(None)):
     """Check YouTube connection status"""
-    user = await get_current_user_from_request(request)
     return {"connected": user.get("youtube_connected", False)}
 
 @app.get("/api/auth/linkedin/status")
 async def get_linkedin_status(request: Request, authorization: str = Header(None)):
     """Check LinkedIn connection status"""
-    user = await get_current_user_from_request(request)
     return {"connected": user.get("linkedin_connected", False)}
 
 @app.get("/api/auth/tiktok/status")
 async def get_tiktok_status(request: Request, authorization: str = Header(None)):
     """Check TikTok connection status"""
-    user = await get_current_user_from_request(request)
     return {"connected": user.get("tiktok_connected", False)}
 
 @app.delete("/api/auth/{platform}/disconnect")
 async def disconnect_platform(platform: str):
     """Disconnect a social media platform"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     update_fields = {"updated_at": datetime.now(timezone.utc)}
@@ -991,7 +973,6 @@ async def disconnect_platform(platform: str):
 @app.get("/api/auth/{platform}/authorize")
 async def get_platform_auth_url(platform: str):
     """Get OAuth authorization URL for a platform"""
-    user = await get_current_user_from_request(request)
     
     if platform == "facebook":
         facebook_app_id = os.getenv("FACEBOOK_APP_ID")
@@ -1046,7 +1027,6 @@ async def get_platform_auth_url(platform: str):
 @app.get("/api/youtube/auth-url")
 async def get_youtube_auth_url(request: Request, authorization: str = Header(None)):
     """Generate YouTube OAuth URL"""
-    user = await get_current_user_from_request(request)
     
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
     redirect_uri = "https://reels-estate.app/auth/youtube/callback"
@@ -1140,7 +1120,6 @@ async def youtube_callback(code: str, state: str):
 @app.get("/api/tiktok/auth-url")
 async def get_tiktok_auth_url(request: Request, authorization: str = Header(None)):
     """Generate TikTok OAuth URL"""
-    user = await get_current_user_from_request(request)
     
     tiktok_client_key = os.getenv("TIKTOK_CLIENT_KEY")
     redirect_uri = "https://reels-estate.app/auth/tiktok/callback"
@@ -1245,7 +1224,6 @@ async def tiktok_callback(code: str, state: str):
 @app.get("/api/linkedin/auth-url")
 async def get_linkedin_auth_url(request: Request, authorization: str = Header(None)):
     """Generate LinkedIn OAuth URL"""
-    user = await get_current_user_from_request(request)
     
     linkedin_client_id = os.getenv("LINKEDIN_CLIENT_ID")
     redirect_uri = "https://reels-estate.app/auth/linkedin/callback"
@@ -1348,7 +1326,6 @@ async def linkedin_callback(code: str, state: str):
 @app.get("/api/auth/linkedin/pages")
 async def get_linkedin_pages(request: Request, authorization: str = Header(None)):
     """Get LinkedIn pages for user (personal profile and organization pages)"""
-    user = await get_current_user_from_request(request)
     
     pages = []
     
@@ -1370,7 +1347,6 @@ async def get_linkedin_pages(request: Request, authorization: str = Header(None)
 @app.post("/api/auth/linkedin/select-page")
 async def select_linkedin_page(request: dict):
     """Select which LinkedIn page/profile to post to"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     page_urn = request.get("page_urn")
@@ -1389,7 +1365,6 @@ async def select_linkedin_page(request: dict):
 @app.get("/api/agents")
 async def get_agents(request: Request, authorization: str = Header(None)):
     """Get all agents for the user"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     agents = await db.agents.find({"user_id": user["id"]}, {"_id": 0}).to_list(1000)
@@ -1398,7 +1373,6 @@ async def get_agents(request: Request, authorization: str = Header(None)):
 @app.post("/api/agents")
 async def add_agent(agent: dict):
     """Add a new agent"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     agent_data = {
@@ -1418,7 +1392,6 @@ async def add_agent(agent: dict):
 @app.put("/api/agents/{agent_id}")
 async def update_agent(agent_id: str, agent: dict):
     """Update an existing agent"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Verify agent belongs to user
@@ -1444,7 +1417,6 @@ async def update_agent(agent_id: str, agent: dict):
 @app.delete("/api/agents/{agent_id}")
 async def delete_agent(agent_id: str):
     """Delete an agent"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Verify agent belongs to user
@@ -1459,7 +1431,6 @@ async def delete_agent(agent_id: str):
 @app.post("/api/upload/agent-photo")
 async def upload_agent_photo(request: Request, file: UploadFile = File(...)):
     """Upload agent photo - stores as base64 in database"""
-    user = await get_current_user_from_request(request)
     
     # Validate file type
     allowed_types = ["image/png", "image/jpeg", "image/jpg"]
@@ -1484,7 +1455,6 @@ class SubscriptionRequest(BaseModel):
 @app.post("/api/subscription")
 async def activate_subscription(subscription: SubscriptionRequest):
     """Activate a subscription plan"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # For now, this is a mock implementation
@@ -1515,7 +1485,6 @@ async def activate_subscription(subscription: SubscriptionRequest):
 @app.get("/api/subscription")
 async def get_subscription(request: Request, authorization: str = Header(None)):
     """Get user's current subscription"""
-    user = await get_current_user_from_request(request)
     
     return {
         "plan": user.get("plan", "free"),
@@ -1537,7 +1506,6 @@ class BillingRequest(BaseModel):
 @app.get("/api/billing")
 async def get_billing(request: Request, authorization: str = Header(None)):
     """Get user's billing information"""
-    user = await get_current_user_from_request(request)
     
     billing_info = user.get("billing_info", {})
     return {
@@ -1550,7 +1518,6 @@ async def get_billing(request: Request, authorization: str = Header(None)):
 @app.post("/api/billing")
 async def save_billing(billing: BillingRequest):
     """Save user's billing information"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     await db.users.update_one(
@@ -1567,7 +1534,6 @@ async def save_billing(billing: BillingRequest):
 @app.post("/api/subscription/cancel")
 async def cancel_subscription(request: Request, authorization: str = Header(None)):
     """Cancel user's subscription"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     await db.users.update_one(
@@ -1589,7 +1555,6 @@ class DiscountValidateRequest(BaseModel):
 @app.post("/api/discount-codes/validate")
 async def validate_discount_code(request: DiscountValidateRequest):
     """Validate a discount code"""
-    user = await get_current_user_from_request(request)
     
     # For now, implement some sample discount codes
     valid_codes = {
@@ -1621,7 +1586,6 @@ async def validate_discount_code(request: DiscountValidateRequest):
 @app.post("/api/discount-codes/apply")
 async def apply_discount_code(request: DiscountValidateRequest):
     """Apply a discount code to user's account"""
-    user = await get_current_user_from_request(request)
     db = get_database()
     
     # Validate first
