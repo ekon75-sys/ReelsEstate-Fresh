@@ -377,7 +377,7 @@ const PhotoUpload = () => {
 
   const handleUndoEnhance = async (photoId) => {
     try {
-      await axios.post(`${API_URL}/projects/${projectId}/photos/${photoId}/undo-enhance`);
+      await axios.post(`${API_URL}/projects/${projectId}/photos/${photoId}/undo-enhance`, {}, { withCredentials: true });
       toast.success('Enhancement removed');
       await loadPhotos();
     } catch (error) {
