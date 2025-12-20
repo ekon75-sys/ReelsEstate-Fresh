@@ -1955,3 +1955,315 @@ async def get_subscription_plans():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+
+# ============================================
+# PROJECT MANAGEMENT ENDPOINTS
+# ============================================
+
+class ProjectCreate(BaseModel):
+    title: str
+    status: str = "draft"
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    status: Optional[str] = None
+    agent_id: Optional[str] = None
+    left_banner: Optional[str] = None
+    right_banner_price: Optional[str] = None
+    currency: Optional[str] = None
+    music_track: Optional[str] = None
+
+@app.get("/api/projects")
+async def get_projects(request: Request, authorization: str = Header(None)):
+    """Get all projects for the current user"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    projects = await db.projects.find(
+        {"user_id": user["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    
+    return projects
+
+@app.post("/api/projects")
+async def create_project(request: Request, project: ProjectCreate, authorization: str = Header(None)):
+    """Create a new project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    project_data = {
+        "id": str(ObjectId()),
+        "user_id": user["id"],
+        "title": project.title,
+        "status": project.status,
+        "photos": [],
+        "photo_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.projects.insert_one(project_data)
+    
+    return {"id": project_data["id"], "status": "success", "message": "Project created"}
+
+@app.get("/api/projects/{project_id}")
+async def get_project(request: Request, project_id: str, authorization: str = Header(None)):
+    """Get a specific project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]},
+        {"_id": 0}
+    )
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    return project
+
+@app.put("/api/projects/{project_id}")
+async def update_project(request: Request, project_id: str, project: ProjectUpdate, authorization: str = Header(None)):
+    """Update a project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Build update dict with only provided fields
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    for field, value in project.dict(exclude_unset=True).items():
+        if value is not None:
+            update_data[field] = value
+    
+    result = await db.projects.update_one(
+        {"id": project_id, "user_id": user["id"]},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    return {"status": "success", "message": "Project updated"}
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(request: Request, project_id: str, authorization: str = Header(None)):
+    """Delete a project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    result = await db.projects.delete_one({"id": project_id, "user_id": user["id"]})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Also delete associated photos and videos
+    await db.project_photos.delete_many({"project_id": project_id})
+    await db.project_videos.delete_many({"project_id": project_id})
+    
+    return {"status": "success", "message": "Project deleted"}
+
+# ============================================
+# PROJECT PHOTOS ENDPOINTS
+# ============================================
+
+@app.post("/api/projects/{project_id}/photos")
+async def upload_project_photo(
+    request: Request,
+    project_id: str,
+    file: UploadFile = File(...),
+    position: int = 0,
+    caption: str = "",
+    authorization: str = Header(None)
+):
+    """Upload a photo to a project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Verify project belongs to user
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Read file and convert to base64
+    import base64
+    file_content = await file.read()
+    base64_data = base64.b64encode(file_content).decode('utf-8')
+    
+    photo_id = str(ObjectId())
+    photo_url = f"data:{file.content_type};base64,{base64_data}"
+    
+    photo_data = {
+        "id": photo_id,
+        "project_id": project_id,
+        "original_url": photo_url,
+        "enhanced_url": None,
+        "enhanced": False,
+        "position": position,
+        "caption": caption,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add to project's photos array
+    await db.projects.update_one(
+        {"id": project_id},
+        {
+            "$push": {"photos": photo_data},
+            "$inc": {"photo_count": 1},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"status": "success", "photo_id": photo_id, "url": photo_url}
+
+@app.put("/api/projects/{project_id}/photos/{photo_id}")
+async def update_project_photo(
+    request: Request,
+    project_id: str,
+    photo_id: str,
+    update: dict,
+    authorization: str = Header(None)
+):
+    """Update a photo's caption or position"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Build the update query for the specific photo in the array
+    update_fields = {}
+    if "caption" in update:
+        update_fields["photos.$.caption"] = update["caption"]
+    if "position" in update:
+        update_fields["photos.$.position"] = update["position"]
+    
+    if update_fields:
+        await db.projects.update_one(
+            {"id": project_id, "user_id": user["id"], "photos.id": photo_id},
+            {"$set": update_fields}
+        )
+    
+    return {"status": "success", "message": "Photo updated"}
+
+@app.delete("/api/projects/{project_id}/photos/{photo_id}")
+async def delete_project_photo(
+    request: Request,
+    project_id: str,
+    photo_id: str,
+    authorization: str = Header(None)
+):
+    """Delete a photo from a project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    await db.projects.update_one(
+        {"id": project_id, "user_id": user["id"]},
+        {
+            "$pull": {"photos": {"id": photo_id}},
+            "$inc": {"photo_count": -1},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"status": "success", "message": "Photo deleted"}
+
+@app.post("/api/projects/{project_id}/photos/{photo_id}/enhance")
+async def enhance_project_photo(
+    request: Request,
+    project_id: str,
+    photo_id: str,
+    enhancement_type: str = "auto",
+    authorization: str = Header(None)
+):
+    """Enhance a photo (mock implementation)"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # For now, just mark as enhanced (real implementation would use AI)
+    await db.projects.update_one(
+        {"id": project_id, "user_id": user["id"], "photos.id": photo_id},
+        {"$set": {
+            "photos.$.enhanced": True,
+            "photos.$.caption": "Enhanced",
+            "photos.$.enhancement_type": enhancement_type
+        }}
+    )
+    
+    return {"status": "success", "message": f"Photo enhanced with {enhancement_type}"}
+
+@app.post("/api/projects/{project_id}/photos/{photo_id}/undo-enhance")
+async def undo_enhance_photo(
+    request: Request,
+    project_id: str,
+    photo_id: str,
+    authorization: str = Header(None)
+):
+    """Undo photo enhancement"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    await db.projects.update_one(
+        {"id": project_id, "user_id": user["id"], "photos.id": photo_id},
+        {"$set": {
+            "photos.$.enhanced": False,
+            "photos.$.enhanced_url": None,
+            "photos.$.caption": ""
+        }}
+    )
+    
+    return {"status": "success", "message": "Enhancement removed"}
+
+# ============================================
+# PROJECT VIDEOS ENDPOINTS
+# ============================================
+
+@app.get("/api/projects/{project_id}/videos")
+async def get_project_videos(request: Request, project_id: str, authorization: str = Header(None)):
+    """Get all videos for a project"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Verify project belongs to user
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    videos = await db.project_videos.find(
+        {"project_id": project_id},
+        {"_id": 0}
+    ).to_list(100)
+    
+    return videos
+
+@app.post("/api/projects/{project_id}/generate-video")
+async def generate_project_video(
+    request: Request,
+    project_id: str,
+    format_type: str = "16:9",
+    authorization: str = Header(None)
+):
+    """Generate a video for a project (mock implementation)"""
+    user = await get_current_user(request, authorization)
+    db = get_database()
+    
+    # Verify project belongs to user
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    if not project.get("photos") or len(project.get("photos", [])) == 0:
+        raise HTTPException(status_code=400, detail="Project has no photos")
+    
+    # Create a mock video record (real implementation would generate actual video)
+    video_id = str(ObjectId())
+    video_data = {
+        "id": video_id,
+        "project_id": project_id,
+        "user_id": user["id"],
+        "format": format_type,
+        "status": "completed",
+        "file_url": f"/api/videos/{video_id}/placeholder.mp4",  # Placeholder URL
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.project_videos.insert_one(video_data)
+    
+    return {"status": "success", "video_id": video_id, "message": "Video generated (mock)"}
+
