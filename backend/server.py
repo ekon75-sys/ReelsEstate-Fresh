@@ -1460,7 +1460,7 @@ async def delete_agent(agent_id: str, request: Request, authorization: str = Hea
     return {"status": "success", "message": "Agent deleted"}
 
 @app.post("/api/upload/agent-photo")
-async def upload_agent_photo(file: UploadFile = File(...), request: Request, authorization: str = Header(None)):
+async def upload_agent_photo(request: Request, file: UploadFile = File(...)):
     """Upload agent photo - stores as base64 in database"""
     user = await get_current_user_from_request(request)
     
