@@ -112,17 +112,16 @@ async def test_db():
         return {"status": "error", "database": "failed", "error": str(e)}
 
 # Auth middleware to get current user from session cookie or JWT
-async def get_current_user(request: Request = None, authorization: str = Header(None)):
+async def get_current_user_from_request(request: Request):
     """Get current user from session cookie or JWT token"""
     db = get_database()
     
     # Try session cookie first (new method)
-    session_token = None
-    if request:
-        session_token = request.cookies.get("session_token")
+    session_token = request.cookies.get("session_token")
     
     # Fallback to Authorization header (old method)
-    if not session_token and authorization and authorization.startswith("Bearer "):
+    authorization = request.headers.get("authorization", "")
+    if not session_token and authorization.startswith("Bearer "):
         session_token = authorization.replace("Bearer ", "")
     
     if not session_token:
@@ -151,6 +150,11 @@ async def get_current_user(request: Request = None, authorization: str = Header(
         pass
     
     raise HTTPException(status_code=401, detail="Invalid session")
+
+# Wrapper for backward compatibility
+async def get_current_user(authorization: str = Header(None)):
+    """Legacy function - kept for backward compatibility"""
+    raise HTTPException(status_code=401, detail="Use session cookie authentication")
 
 # Get current user endpoint
 @app.get("/api/auth/me")
