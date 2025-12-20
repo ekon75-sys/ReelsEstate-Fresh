@@ -829,6 +829,7 @@ async def get_instagram_accounts(request: Request, authorization: str = Header(N
 
 @app.post("/api/instagram/connect")
 async def connect_instagram_account(
+    request: Request,
     ig_account_id: str,
     username: str,
     facebook_page_id: str,
