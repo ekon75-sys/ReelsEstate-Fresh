@@ -2,11 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const { setUserData } = useAuth();
   const hasProcessed = useRef(false);
 
   useEffect(() => {
