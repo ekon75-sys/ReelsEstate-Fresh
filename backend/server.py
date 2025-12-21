@@ -2976,47 +2976,60 @@ async def generate_project_video(
                         agent_photo_img = None
             
             if is_vertical:
-                # Vertical layout (9:16)
-                # Logo at top
-                if logo_img:
-                    logo_max_w = int(width * 0.5)
-                    logo_max_h = int(height * 0.12)
-                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
-                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
-                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
-                    logo_x = (width - logo_size[0]) // 2
-                    logo_y = int(height * 0.08)
-                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                # Vertical layout (9:16) - WHITE BACKGROUND
+                # "For more Info" title at top
+                info_title = "For more Info"
+                bbox_info = draw.textbbox((0, 0), info_title, font=font_title)
+                info_w = bbox_info[2] - bbox_info[0]
+                draw.text(((width - info_w) // 2, int(height * 0.05)), info_title, fill=brand_rgb, font=font_title)
                 
                 # Agent photo in center (circular)
+                photo_y_start = int(height * 0.16)
                 if agent_photo_img:
-                    photo_size = int(width * 0.5)
+                    photo_size = int(width * 0.50)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
-                    # Create circular mask
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
                     photo_x = (width - photo_size) // 2
-                    photo_y = int(height * 0.28)
-                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y_start), mask)
+                    y_pos = photo_y_start + photo_size + int(height * 0.03)
+                else:
+                    y_pos = int(height * 0.35)
                 
-                # Agent info below
-                y_pos = int(height * 0.58)
+                # Agent info - LARGE fonts
                 if agent:
                     if agent.get("name"):
                         bbox = draw.textbbox((0, 0), agent["name"], font=font_large)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["name"], fill="white", font=font_large)
+                        draw.text((x, y_pos), agent["name"], fill=text_color, font=font_large)
                         y_pos += int(height * 0.08)
                     if agent.get("phone"):
                         bbox = draw.textbbox((0, 0), agent["phone"], font=font_medium)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["phone"], fill="white", font=font_medium)
-                        y_pos += int(height * 0.05)
+                        draw.text((x, y_pos), agent["phone"], fill=text_color, font=font_medium)
+                        y_pos += int(height * 0.06)
                     if agent.get("email"):
                         bbox = draw.textbbox((0, 0), agent["email"], font=font_small)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["email"], fill="white", font=font_small)
+                        draw.text((x, y_pos), agent["email"], fill=text_color, font=font_small)
+                
+                # Website at bottom
+                company_website = branding.get("website", "") or user_data.get("website", "") if user_data else ""
+                if company_website:
+                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
+                    x = (width - (bbox[2] - bbox[0])) // 2
+                    draw.text((x, int(height * 0.85)), company_website, fill=brand_rgb, font=font_medium)
+                
+                # Logo at bottom
+                if logo_img:
+                    logo_max_w = int(width * 0.40)
+                    logo_max_h = int(height * 0.08)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size_v = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size_v, Image.LANCZOS)
+                    logo_x = (width - logo_size_v[0]) // 2
+                    outro_img.paste(logo_resized, (logo_x, int(height * 0.91)), logo_resized if logo_resized.mode == 'RGBA' else None)
             else:
                 # Horizontal/Square layout (16:9 or 1:1)
                 # Logo on left side
