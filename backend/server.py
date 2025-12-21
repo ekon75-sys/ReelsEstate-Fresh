@@ -342,6 +342,7 @@ async def emergent_callback(auth_data: EmergentAuthRequest, response: Response):
         
         return {
             "status": "success",
+            "session_token": session_token,
             "user": {
                 "id": user.get("id"),
                 "user_id": user.get("id"),
