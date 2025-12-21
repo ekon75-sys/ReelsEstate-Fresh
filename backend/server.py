@@ -2958,13 +2958,10 @@ async def generate_project_video(
                 combined_clip = CompositeVideoClip([photo_clip, overlay_clip], size=(width, height))
                 all_clips.append(combined_clip)
             
-            # === CREATE OUTRO (5 seconds) ===
-            # Adaptive layout based on format
-            is_vertical = format_type == "9:16"
-            is_square = format_type == "1:1"
-            
-            outro_img = Image.new('RGB', (width, height), color=brand_rgb)
+            # === CREATE OUTRO (5 seconds) - WHITE BACKGROUND ===
+            outro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
             draw = ImageDraw.Draw(outro_img)
+            text_color = (40, 40, 40)  # Dark gray for text
             
             # Get agent photo if available
             agent_photo_img = None
