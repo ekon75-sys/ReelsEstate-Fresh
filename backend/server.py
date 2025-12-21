@@ -2968,7 +2968,7 @@ async def generate_project_video(
                 img = img.resize(zoom_size, Image.LANCZOS)
                 
                 # Add banners and captions
-                img = add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_small, brand_rgb)
+                img = add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_caption, brand_rgb)
                 
                 resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
                 img.save(resized_path, "JPEG", quality=95)
