@@ -2892,6 +2892,11 @@ async def generate_project_video(
             
             for i, photo in enumerate(photos):
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
+                photo_caption = photo.get("caption", "")
+                
+                # Skip empty or placeholder captions
+                if photo_caption in ["", "Enhanced", "Virtually Staged"]:
+                    photo_caption = ""
                 
                 if not photo_url or not photo_url.startswith("data:"):
                     continue
@@ -2932,9 +2937,26 @@ async def generate_project_video(
                 img.save(resized_path, "JPEG", quality=95)
                 
                 # Create clip with Ken Burns effect - cycle through all 12 effects
-                effect_type = i % 12  # Alternate between all 12 different effects
+                effect_type = i % 12
                 photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
-                all_clips.append(photo_clip)
+                
+                # Create STATIC overlay with banners and caption
+                overlay_img = create_static_overlay(
+                    width, height, duration_per_photo,
+                    left_banner, price_text, photo_caption,
+                    is_vertical, font_banner, font_caption, brand_rgb
+                )
+                
+                # Save overlay as PNG
+                overlay_path = os_module.path.join(temp_dir, f"overlay_{i}.png")
+                overlay_img.save(overlay_path, "PNG")
+                
+                # Create overlay clip (static, doesn't move)
+                overlay_clip = ImageClip(overlay_path, duration=duration_per_photo)
+                
+                # Combine: photo with Ken Burns UNDERNEATH, static overlay ON TOP
+                combined_clip = CompositeVideoClip([photo_clip, overlay_clip], size=(width, height))
+                all_clips.append(combined_clip)
             
             # === CREATE OUTRO (5 seconds) ===
             # Adaptive layout based on format
