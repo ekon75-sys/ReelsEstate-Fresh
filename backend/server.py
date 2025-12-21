@@ -184,7 +184,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "ReelsEstate API"}
+    return {"status": "ok", "service": "ReelsEstate API", "version": "2025-12-21-v2"}
 
 @app.get("/api/health")
 async def api_health():
