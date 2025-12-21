@@ -117,9 +117,15 @@ cors_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000"
 ]
+
+# Allow Vercel preview deployments dynamically
+import re
+cors_origin_regex = re.compile(r"https://.*\.vercel\.app")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
