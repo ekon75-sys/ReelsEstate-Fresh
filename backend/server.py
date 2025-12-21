@@ -2822,6 +2822,74 @@ async def generate_project_video(
                 
                 return final
             
+            def create_static_overlay(width, height, duration, banner_text, price_text, caption_text, is_vertical, font_banner, font_caption, brand_rgb):
+                """Create a static overlay image with banners and captions that stays fixed"""
+                # Create transparent overlay
+                overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(overlay)
+                
+                padding = int(width * 0.03)
+                banner_pad = int(width * 0.015)
+                
+                # Banner at top-left (or top-center for vertical)
+                if banner_text and banner_text != "No Banner":
+                    bbox = draw.textbbox((0, 0), banner_text, font=font_banner)
+                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                    if is_vertical:
+                        bg_x = (width - text_w) // 2 - banner_pad
+                    else:
+                        bg_x = padding
+                    bg_y = padding
+                    # Draw banner background with brand color
+                    draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_pad * 2, bg_y + text_h + banner_pad * 2], 
+                                   fill=(brand_rgb[0], brand_rgb[1], brand_rgb[2], 240))
+                    draw.text((bg_x + banner_pad, bg_y + banner_pad), banner_text, fill="white", font=font_banner)
+                
+                # Price banner at top-right (horizontal) or below status (vertical)
+                if price_text:
+                    bbox = draw.textbbox((0, 0), price_text, font=font_banner)
+                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                    if is_vertical:
+                        bg_x = (width - text_w) // 2 - banner_pad
+                        bg_y = padding + text_h + banner_pad * 4 if banner_text else padding
+                    else:
+                        bg_x = width - text_w - banner_pad * 2 - padding
+                        bg_y = padding
+                    draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_pad * 2, bg_y + text_h + banner_pad * 2], 
+                                   fill=(brand_rgb[0], brand_rgb[1], brand_rgb[2], 240))
+                    draw.text((bg_x + banner_pad, bg_y + banner_pad), price_text, fill="white", font=font_banner)
+                
+                # Caption as subtitle at bottom
+                if caption_text:
+                    bbox = draw.textbbox((0, 0), caption_text, font=font_caption)
+                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                    text_x = (width - text_w) // 2
+                    text_y = height - text_h - padding * 2
+                    # Dark background bar for subtitle
+                    draw.rectangle([0, text_y - padding, width, height], fill=(0, 0, 0, 200))
+                    draw.text((text_x, text_y), caption_text, fill="white", font=font_caption)
+                
+                return overlay
+            
+            # Get banner and price info
+            left_banner = project.get("left_banner", "")
+            price = project.get("price")
+            currency = project.get("currency", "€")
+            price_text = ""
+            if price:
+                try:
+                    price_val = float(price)
+                    if price_val >= 1000000:
+                        price_text = f"{currency} {price_val/1000000:.1f}M"
+                    elif price_val >= 1000:
+                        price_text = f"{currency} {price_val/1000:.0f}K"
+                    else:
+                        price_text = f"{currency} {price_val:.0f}"
+                except:
+                    price_text = f"{currency} {price}"
+            
+            is_vertical = format_type == "9:16"
+            
             for i, photo in enumerate(photos):
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
                 
