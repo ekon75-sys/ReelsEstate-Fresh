@@ -3097,35 +3097,35 @@ async def generate_project_video(
                 else:
                     text_x = int(width * 0.15)
                 
-                # Agent info on right side
-                y_pos = agent_section_y + int(height * 0.05)
+                # Agent info on right side - larger fonts
+                y_pos = agent_section_y + int(height * 0.08)
                 if agent:
                     if agent.get("name"):
-                        draw.text((text_x, y_pos), agent["name"], fill=text_color, font=font_large)
-                        y_pos += int(height * 0.12)
+                        draw.text((text_x, y_pos), agent["name"], fill=text_color, font=font_xlarge)
+                        y_pos += int(height * 0.14)
                     if agent.get("phone"):
-                        draw.text((text_x, y_pos), agent["phone"], fill=text_color, font=font_medium)
-                        y_pos += int(height * 0.08)
+                        draw.text((text_x, y_pos), agent["phone"], fill=text_color, font=font_large)
+                        y_pos += int(height * 0.10)
                     if agent.get("email"):
-                        draw.text((text_x, y_pos), agent["email"], fill=text_color, font=font_small)
+                        draw.text((text_x, y_pos), agent["email"], fill=text_color, font=font_medium)
                         y_pos += int(height * 0.08)
                 
-                # Website and logo at bottom
-                bottom_y = int(height * 0.82)
+                # Website and logo at bottom - larger fonts
+                bottom_y = int(height * 0.80)
                 if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
+                    bbox = draw.textbbox((0, 0), company_website, font=font_large)
                     x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, bottom_y), company_website, fill=brand_rgb, font=font_medium)
+                    draw.text((x, bottom_y), company_website, fill=brand_rgb, font=font_large)
                 
-                # Logo at bottom right
+                # Logo at bottom right - larger
                 if logo_img:
-                    logo_max_w = int(width * 0.2)
-                    logo_max_h = int(height * 0.12)
+                    logo_max_w = int(width * 0.25)
+                    logo_max_h = int(height * 0.15)
                     logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                     logo_size_h = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                     logo_resized = logo_img.resize(logo_size_h, Image.LANCZOS)
-                    logo_x = width - logo_size_h[0] - int(width * 0.05)
-                    logo_y = int(height * 0.88)
+                    logo_x = width - logo_size_h[0] - int(width * 0.04)
+                    logo_y = int(height * 0.85)
                     outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
             
             outro_path = os_module.path.join(temp_dir, "outro.jpg")
