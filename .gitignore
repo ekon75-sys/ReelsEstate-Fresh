@@ -258,3 +258,7 @@ backend/videos/video_88_20652_16x9.mp4
 # Environment files
 *.env
 *.env.*
+-e 
+# Environment files
+*.env
+*.env.*
