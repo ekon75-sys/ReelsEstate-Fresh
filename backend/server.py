@@ -2651,15 +2651,17 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes based on video dimensions - 5X LARGER for intro/outro
-            font_size_xlarge = max(250, int(height * 0.40))   # Extra large for title - very big
-            font_size_large = max(180, int(height * 0.30))    # Large for headers 
-            font_size_medium = max(120, int(height * 0.20))   # Medium for subtitles
-            font_size_small = max(80, int(height * 0.14))     # Small for details
+            # Font sizes for intro/outro - large but fitting within frame
+            # For 720p: xlarge=108px, large=72px, medium=54px, small=43px
+            font_size_xlarge = max(80, int(height * 0.15))   # Title - prominent but fits
+            font_size_large = max(60, int(height * 0.10))    # Headers/presents
+            font_size_medium = max(45, int(height * 0.075))  # Agent name
+            font_size_small = max(36, int(height * 0.06))    # Contact details
             
-            # Banner fonts - need to be large because image is 1.2x video size
-            font_size_banner = max(70, int(height * 0.10))    # Banner text - very visible
-            font_size_caption = max(55, int(height * 0.08))   # Caption text - visible
+            # Banner/caption fonts for static overlay - clearly visible
+            # These appear on video size (not 1.2x), so need to be appropriately sized
+            font_size_banner = max(40, int(height * 0.055))   # For Sale / Price banners
+            font_size_caption = max(36, int(height * 0.05))   # Subtitle captions
             
             try:
                 font_xlarge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_xlarge)
