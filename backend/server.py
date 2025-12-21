@@ -2653,18 +2653,21 @@ async def generate_project_video(
             duration_per_photo = 4  # seconds per photo
             
             # Font sizes based on video dimensions
-            font_size_large = max(30, int(height * 0.08))
-            font_size_medium = max(24, int(height * 0.05))
-            font_size_small = max(18, int(height * 0.035))
+            font_size_large = max(30, int(height * 0.07))
+            font_size_medium = max(24, int(height * 0.045))
+            font_size_small = max(18, int(height * 0.032))
+            font_size_banner = max(16, int(height * 0.028))
             
             try:
                 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_large)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
+                font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
             except:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
+                font_banner = ImageFont.load_default()
             
             # Get company logo from branding
             logo_url = branding.get("logo_url", "")
@@ -2678,63 +2681,52 @@ async def generate_project_video(
                     logo_img = None
             
             title = project.get("title", "Property Tour")
+            left_banner = project.get("left_banner", "")
+            right_banner_price = project.get("right_banner_price", "")
+            currency = project.get("currency", "€")
             
-            # === CREATE INTRO (5 seconds, 3 frames) ===
-            # Frame 1: Logo only (0-1 sec)
-            intro1_img = Image.new('RGB', (width, height), color=brand_rgb)
+            # Format price
+            price_text = ""
+            if right_banner_price:
+                price_text = f"{currency} {right_banner_price}"
+            
+            is_vertical = format_type == "9:16"
+            
+            # === CREATE INTRO (5 seconds) - WHITE BACKGROUND ===
+            intro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
+            draw_intro = ImageDraw.Draw(intro_img)
+            
+            # Logo at top
+            logo_y_top = int(height * 0.15)
             if logo_img:
-                # Scale logo to fit (max 40% of width, max 30% of height)
                 logo_max_w = int(width * 0.4)
-                logo_max_h = int(height * 0.3)
+                logo_max_h = int(height * 0.2)
                 logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                 logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                 logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
                 logo_x = (width - logo_size[0]) // 2
-                logo_y = (height - logo_size[1]) // 2
-                intro1_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
-            intro1_path = os_module.path.join(temp_dir, "intro1.jpg")
-            intro1_img.save(intro1_path, "JPEG", quality=95)
-            intro1_clip = ImageClip(intro1_path, duration=1)
-            all_clips.append(intro1_clip)
+                intro_img.paste(logo_resized, (logo_x, logo_y_top), logo_resized if logo_resized.mode == 'RGBA' else None)
             
-            # Frame 2: Logo + "presents:" (1-2 sec)
-            intro2_img = Image.new('RGB', (width, height), color=brand_rgb)
-            draw2 = ImageDraw.Draw(intro2_img)
-            if logo_img:
-                logo_y_offset = int(height * 0.3)
-                logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
-                logo_x = (width - logo_size[0]) // 2
-                intro2_img.paste(logo_resized, (logo_x, logo_y_offset), logo_resized if logo_resized.mode == 'RGBA' else None)
-            presents_text = "presents:"
-            bbox = draw2.textbbox((0, 0), presents_text, font=font_medium)
-            text_w = bbox[2] - bbox[0]
-            text_y = int(height * 0.65)
-            draw2.text(((width - text_w) // 2, text_y), presents_text, fill="white", font=font_medium)
-            intro2_path = os_module.path.join(temp_dir, "intro2.jpg")
-            intro2_img.save(intro2_path, "JPEG", quality=95)
-            intro2_clip = ImageClip(intro2_path, duration=1)
-            all_clips.append(intro2_clip)
+            # "presents" in the middle (centered)
+            presents_text = "presents"
+            bbox_presents = draw_intro.textbbox((0, 0), presents_text, font=font_medium)
+            presents_w = bbox_presents[2] - bbox_presents[0]
+            presents_h = bbox_presents[3] - bbox_presents[1]
+            presents_x = (width - presents_w) // 2
+            presents_y = (height - presents_h) // 2
+            draw_intro.text((presents_x, presents_y), presents_text, fill=brand_rgb, font=font_medium)
             
-            # Frame 3: Title fade in (2-5 sec)
-            intro3_img = Image.new('RGB', (width, height), color=brand_rgb)
-            draw3 = ImageDraw.Draw(intro3_img)
-            # Title centered
-            bbox = draw3.textbbox((0, 0), title, font=font_large)
-            title_w = bbox[2] - bbox[0]
-            title_h = bbox[3] - bbox[1]
+            # Title below presents
+            bbox_title = draw_intro.textbbox((0, 0), title, font=font_large)
+            title_w = bbox_title[2] - bbox_title[0]
             title_x = (width - title_w) // 2
-            title_y = (height - title_h) // 2
-            draw3.text((title_x, title_y), title, fill="white", font=font_large)
-            # Subtitle if exists
-            left_banner = project.get("left_banner", "")
-            if left_banner and left_banner != "No Banner":
-                bbox2 = draw3.textbbox((0, 0), left_banner, font=font_small)
-                banner_w = bbox2[2] - bbox2[0]
-                draw3.text(((width - banner_w) // 2, title_y + title_h + 20), left_banner, fill="white", font=font_small)
-            intro3_path = os_module.path.join(temp_dir, "intro3.jpg")
-            intro3_img.save(intro3_path, "JPEG", quality=95)
-            intro3_clip = ImageClip(intro3_path, duration=3)
-            all_clips.append(intro3_clip)
+            title_y = presents_y + presents_h + int(height * 0.08)
+            draw_intro.text((title_x, title_y), title, fill=(50, 50, 50), font=font_large)
+            
+            intro_path = os_module.path.join(temp_dir, "intro.jpg")
+            intro_img.save(intro_path, "JPEG", quality=95)
+            intro_clip = ImageClip(intro_path, duration=5)
+            all_clips.append(intro_clip)
             
             # === PROCESS PHOTOS WITH KEN BURNS EFFECT ===
             def create_ken_burns_clip(img_path, duration, width, height, effect_type):
