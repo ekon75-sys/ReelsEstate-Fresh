@@ -2651,12 +2651,15 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes based on video dimensions - INCREASED for better visibility
-            font_size_xlarge = max(48, int(height * 0.10))   # Extra large for title
-            font_size_large = max(36, int(height * 0.08))    # Large for names, headers
-            font_size_medium = max(28, int(height * 0.055))  # Medium for subtitles
-            font_size_small = max(20, int(height * 0.038))   # Small for details
-            font_size_banner = max(18, int(height * 0.032))  # Banner text
+            # Font sizes based on video dimensions - 5X LARGER for intro/outro
+            font_size_xlarge = max(200, int(height * 0.35))   # Extra large for title - 5x bigger
+            font_size_large = max(150, int(height * 0.25))    # Large for headers - 5x bigger
+            font_size_medium = max(100, int(height * 0.18))   # Medium for subtitles - 5x bigger
+            font_size_small = max(70, int(height * 0.12))     # Small for details - 5x bigger
+            
+            # Banner fonts - need to be large because image is 1.2x video size
+            font_size_banner = max(60, int(height * 0.08))    # Banner text - visible
+            font_size_caption = max(50, int(height * 0.06))   # Caption text - visible
             
             try:
                 font_xlarge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_xlarge)
@@ -2664,12 +2667,14 @@ async def generate_project_video(
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
                 font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
+                font_caption = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_caption)
             except:
                 font_xlarge = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
                 font_banner = ImageFont.load_default()
+                font_caption = ImageFont.load_default()
             
             # Get company logo from user document (stored directly on user, not in branding object)
             logo_url = logo_url_from_user
