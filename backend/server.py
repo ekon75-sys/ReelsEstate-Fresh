@@ -2652,22 +2652,31 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes based on video dimensions
-            font_size_large = max(30, int(height * 0.08))
-            font_size_medium = max(24, int(height * 0.05))
-            font_size_small = max(18, int(height * 0.035))
+            # Font sizes - LARGE for readability
+            font_size_title = max(60, int(height * 0.12))      # Very large for titles
+            font_size_large = max(48, int(height * 0.09))      # Large for names/headers
+            font_size_medium = max(36, int(height * 0.065))    # Medium for details
+            font_size_small = max(28, int(height * 0.05))      # Small for contact info
+            font_size_banner = max(32, int(height * 0.055))    # Banner text
+            font_size_caption = max(30, int(height * 0.05))    # Caption/subtitle text
             
             try:
+                font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_title)
                 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_large)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
+                font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
+                font_caption = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_caption)
             except:
+                font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
+                font_banner = ImageFont.load_default()
+                font_caption = ImageFont.load_default()
             
-            # Get company logo from branding
-            logo_url = branding.get("logo_url", "")
+            # Get company logo - check both branding object and direct user fields
+            logo_url = branding.get("logo_url", "") or user_data.get("logo_url", "") if user_data else ""
             logo_img = None
             if logo_url and logo_url.startswith("data:"):
                 try:
