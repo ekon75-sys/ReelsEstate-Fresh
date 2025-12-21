@@ -2668,8 +2668,8 @@ async def generate_project_video(
                 font_small = ImageFont.load_default()
                 font_banner = ImageFont.load_default()
             
-            # Get company logo from branding
-            logo_url = branding.get("logo_url", "")
+            # Get company logo from user document (stored directly on user, not in branding object)
+            logo_url = logo_url_from_user
             logo_img = None
             if logo_url and logo_url.startswith("data:"):
                 try:
