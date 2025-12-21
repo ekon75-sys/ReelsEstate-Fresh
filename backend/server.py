@@ -2651,18 +2651,21 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes based on video dimensions
-            font_size_large = max(30, int(height * 0.07))
-            font_size_medium = max(24, int(height * 0.045))
-            font_size_small = max(18, int(height * 0.032))
-            font_size_banner = max(16, int(height * 0.028))
+            # Font sizes based on video dimensions - INCREASED for better visibility
+            font_size_xlarge = max(48, int(height * 0.10))   # Extra large for title
+            font_size_large = max(36, int(height * 0.08))    # Large for names, headers
+            font_size_medium = max(28, int(height * 0.055))  # Medium for subtitles
+            font_size_small = max(20, int(height * 0.038))   # Small for details
+            font_size_banner = max(18, int(height * 0.032))  # Banner text
             
             try:
+                font_xlarge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_xlarge)
                 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_large)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
                 font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
             except:
+                font_xlarge = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
