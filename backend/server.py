@@ -2652,31 +2652,22 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes - LARGE for readability
-            font_size_title = max(60, int(height * 0.12))      # Very large for titles
-            font_size_large = max(48, int(height * 0.09))      # Large for names/headers
-            font_size_medium = max(36, int(height * 0.065))    # Medium for details
-            font_size_small = max(28, int(height * 0.05))      # Small for contact info
-            font_size_banner = max(32, int(height * 0.055))    # Banner text
-            font_size_caption = max(30, int(height * 0.05))    # Caption/subtitle text
+            # Font sizes based on video dimensions
+            font_size_large = max(30, int(height * 0.08))
+            font_size_medium = max(24, int(height * 0.05))
+            font_size_small = max(18, int(height * 0.035))
             
             try:
-                font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_title)
                 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_large)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
-                font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
-                font_caption = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_caption)
             except:
-                font_title = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
-                font_banner = ImageFont.load_default()
-                font_caption = ImageFont.load_default()
             
-            # Get company logo - check both branding object and direct user fields
-            logo_url = branding.get("logo_url", "") or user_data.get("logo_url", "") if user_data else ""
+            # Get company logo from branding
+            logo_url = branding.get("logo_url", "")
             logo_img = None
             if logo_url and logo_url.startswith("data:"):
                 try:
@@ -2688,38 +2679,62 @@ async def generate_project_video(
             
             title = project.get("title", "Property Tour")
             
-            # === CREATE INTRO (5 seconds) - WHITE BACKGROUND ===
-            intro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
-            draw_intro = ImageDraw.Draw(intro_img)
-            
-            # Logo at top center
+            # === CREATE INTRO (5 seconds, 3 frames) ===
+            # Frame 1: Logo only (0-1 sec)
+            intro1_img = Image.new('RGB', (width, height), color=brand_rgb)
             if logo_img:
-                logo_max_w = int(width * 0.45)
-                logo_max_h = int(height * 0.25)
+                # Scale logo to fit (max 40% of width, max 30% of height)
+                logo_max_w = int(width * 0.4)
+                logo_max_h = int(height * 0.3)
                 logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                 logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                 logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
                 logo_x = (width - logo_size[0]) // 2
-                logo_y = int(height * 0.12)
-                intro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                logo_y = (height - logo_size[1]) // 2
+                intro1_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+            intro1_path = os_module.path.join(temp_dir, "intro1.jpg")
+            intro1_img.save(intro1_path, "JPEG", quality=95)
+            intro1_clip = ImageClip(intro1_path, duration=1)
+            all_clips.append(intro1_clip)
             
-            # "presents" text in brand color
-            presents_text = "presents"
-            bbox = draw_intro.textbbox((0, 0), presents_text, font=font_large)
+            # Frame 2: Logo + "presents:" (1-2 sec)
+            intro2_img = Image.new('RGB', (width, height), color=brand_rgb)
+            draw2 = ImageDraw.Draw(intro2_img)
+            if logo_img:
+                logo_y_offset = int(height * 0.3)
+                logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                logo_x = (width - logo_size[0]) // 2
+                intro2_img.paste(logo_resized, (logo_x, logo_y_offset), logo_resized if logo_resized.mode == 'RGBA' else None)
+            presents_text = "presents:"
+            bbox = draw2.textbbox((0, 0), presents_text, font=font_medium)
             text_w = bbox[2] - bbox[0]
-            presents_y = int(height * 0.48)
-            draw_intro.text(((width - text_w) // 2, presents_y), presents_text, fill=brand_rgb, font=font_large)
+            text_y = int(height * 0.65)
+            draw2.text(((width - text_w) // 2, text_y), presents_text, fill="white", font=font_medium)
+            intro2_path = os_module.path.join(temp_dir, "intro2.jpg")
+            intro2_img.save(intro2_path, "JPEG", quality=95)
+            intro2_clip = ImageClip(intro2_path, duration=1)
+            all_clips.append(intro2_clip)
             
-            # Title in dark color - LARGE
-            bbox_title = draw_intro.textbbox((0, 0), title, font=font_title)
-            title_w = bbox_title[2] - bbox_title[0]
-            title_y = int(height * 0.60)
-            draw_intro.text(((width - title_w) // 2, title_y), title, fill=(40, 40, 40), font=font_title)
-            
-            intro_path = os_module.path.join(temp_dir, "intro.jpg")
-            intro_img.save(intro_path, "JPEG", quality=95)
-            intro_clip = ImageClip(intro_path, duration=5)
-            all_clips.append(intro_clip)
+            # Frame 3: Title fade in (2-5 sec)
+            intro3_img = Image.new('RGB', (width, height), color=brand_rgb)
+            draw3 = ImageDraw.Draw(intro3_img)
+            # Title centered
+            bbox = draw3.textbbox((0, 0), title, font=font_large)
+            title_w = bbox[2] - bbox[0]
+            title_h = bbox[3] - bbox[1]
+            title_x = (width - title_w) // 2
+            title_y = (height - title_h) // 2
+            draw3.text((title_x, title_y), title, fill="white", font=font_large)
+            # Subtitle if exists
+            left_banner = project.get("left_banner", "")
+            if left_banner and left_banner != "No Banner":
+                bbox2 = draw3.textbbox((0, 0), left_banner, font=font_small)
+                banner_w = bbox2[2] - bbox2[0]
+                draw3.text(((width - banner_w) // 2, title_y + title_h + 20), left_banner, fill="white", font=font_small)
+            intro3_path = os_module.path.join(temp_dir, "intro3.jpg")
+            intro3_img.save(intro3_path, "JPEG", quality=95)
+            intro3_clip = ImageClip(intro3_path, duration=3)
+            all_clips.append(intro3_clip)
             
             # === PROCESS PHOTOS WITH KEN BURNS EFFECT ===
             def create_ken_burns_clip(img_path, duration, width, height, effect_type):
@@ -2822,81 +2837,8 @@ async def generate_project_video(
                 
                 return final
             
-            def create_static_overlay(width, height, duration, banner_text, price_text, caption_text, is_vertical, font_banner, font_caption, brand_rgb):
-                """Create a static overlay image with banners and captions that stays fixed"""
-                # Create transparent overlay
-                overlay = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-                draw = ImageDraw.Draw(overlay)
-                
-                padding = int(width * 0.03)
-                banner_pad = int(width * 0.015)
-                
-                # Banner at top-left (or top-center for vertical)
-                if banner_text and banner_text != "No Banner":
-                    bbox = draw.textbbox((0, 0), banner_text, font=font_banner)
-                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                    if is_vertical:
-                        bg_x = (width - text_w) // 2 - banner_pad
-                    else:
-                        bg_x = padding
-                    bg_y = padding
-                    # Draw banner background with brand color
-                    draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_pad * 2, bg_y + text_h + banner_pad * 2], 
-                                   fill=(brand_rgb[0], brand_rgb[1], brand_rgb[2], 240))
-                    draw.text((bg_x + banner_pad, bg_y + banner_pad), banner_text, fill="white", font=font_banner)
-                
-                # Price banner at top-right (horizontal) or below status (vertical)
-                if price_text:
-                    bbox = draw.textbbox((0, 0), price_text, font=font_banner)
-                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                    if is_vertical:
-                        bg_x = (width - text_w) // 2 - banner_pad
-                        bg_y = padding + text_h + banner_pad * 4 if banner_text else padding
-                    else:
-                        bg_x = width - text_w - banner_pad * 2 - padding
-                        bg_y = padding
-                    draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_pad * 2, bg_y + text_h + banner_pad * 2], 
-                                   fill=(brand_rgb[0], brand_rgb[1], brand_rgb[2], 240))
-                    draw.text((bg_x + banner_pad, bg_y + banner_pad), price_text, fill="white", font=font_banner)
-                
-                # Caption as subtitle at bottom
-                if caption_text:
-                    bbox = draw.textbbox((0, 0), caption_text, font=font_caption)
-                    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                    text_x = (width - text_w) // 2
-                    text_y = height - text_h - padding * 2
-                    # Dark background bar for subtitle
-                    draw.rectangle([0, text_y - padding, width, height], fill=(0, 0, 0, 200))
-                    draw.text((text_x, text_y), caption_text, fill="white", font=font_caption)
-                
-                return overlay
-            
-            # Get banner and price info
-            left_banner = project.get("left_banner", "")
-            price = project.get("price")
-            currency = project.get("currency", "€")
-            price_text = ""
-            if price:
-                try:
-                    price_val = float(price)
-                    if price_val >= 1000000:
-                        price_text = f"{currency} {price_val/1000000:.1f}M"
-                    elif price_val >= 1000:
-                        price_text = f"{currency} {price_val/1000:.0f}K"
-                    else:
-                        price_text = f"{currency} {price_val:.0f}"
-                except:
-                    price_text = f"{currency} {price}"
-            
-            is_vertical = format_type == "9:16"
-            
             for i, photo in enumerate(photos):
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
-                photo_caption = photo.get("caption", "")
-                
-                # Skip empty or placeholder captions
-                if photo_caption in ["", "Enhanced", "Virtually Staged"]:
-                    photo_caption = ""
                 
                 if not photo_url or not photo_url.startswith("data:"):
                     continue
@@ -2937,31 +2879,17 @@ async def generate_project_video(
                 img.save(resized_path, "JPEG", quality=95)
                 
                 # Create clip with Ken Burns effect - cycle through all 12 effects
-                effect_type = i % 12
+                effect_type = i % 12  # Alternate between all 12 different effects
                 photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
-                
-                # Create STATIC overlay with banners and caption
-                overlay_img = create_static_overlay(
-                    width, height, duration_per_photo,
-                    left_banner, price_text, photo_caption,
-                    is_vertical, font_banner, font_caption, brand_rgb
-                )
-                
-                # Save overlay as PNG
-                overlay_path = os_module.path.join(temp_dir, f"overlay_{i}.png")
-                overlay_img.save(overlay_path, "PNG")
-                
-                # Create overlay clip (static, doesn't move)
-                overlay_clip = ImageClip(overlay_path, duration=duration_per_photo)
-                
-                # Combine: photo with Ken Burns UNDERNEATH, static overlay ON TOP
-                combined_clip = CompositeVideoClip([photo_clip, overlay_clip], size=(width, height))
-                all_clips.append(combined_clip)
+                all_clips.append(photo_clip)
             
-            # === CREATE OUTRO (5 seconds) - WHITE BACKGROUND ===
-            outro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
+            # === CREATE OUTRO (5 seconds) ===
+            # Adaptive layout based on format
+            is_vertical = format_type == "9:16"
+            is_square = format_type == "1:1"
+            
+            outro_img = Image.new('RGB', (width, height), color=brand_rgb)
             draw = ImageDraw.Draw(outro_img)
-            text_color = (40, 40, 40)  # Dark gray for text
             
             # Get agent photo if available
             agent_photo_img = None
@@ -2976,110 +2904,91 @@ async def generate_project_video(
                         agent_photo_img = None
             
             if is_vertical:
-                # Vertical layout (9:16) - WHITE BACKGROUND
-                # "For more Info" title at top
-                info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_title)
-                info_w = bbox_info[2] - bbox_info[0]
-                draw.text(((width - info_w) // 2, int(height * 0.05)), info_title, fill=brand_rgb, font=font_title)
+                # Vertical layout (9:16)
+                # Logo at top
+                if logo_img:
+                    logo_max_w = int(width * 0.5)
+                    logo_max_h = int(height * 0.12)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_x = (width - logo_size[0]) // 2
+                    logo_y = int(height * 0.08)
+                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
                 
                 # Agent photo in center (circular)
-                photo_y_start = int(height * 0.16)
                 if agent_photo_img:
-                    photo_size = int(width * 0.50)
+                    photo_size = int(width * 0.5)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
+                    # Create circular mask
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
                     photo_x = (width - photo_size) // 2
-                    outro_img.paste(agent_photo_resized, (photo_x, photo_y_start), mask)
-                    y_pos = photo_y_start + photo_size + int(height * 0.03)
-                else:
-                    y_pos = int(height * 0.35)
+                    photo_y = int(height * 0.28)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
                 
-                # Agent info - LARGE fonts
+                # Agent info below
+                y_pos = int(height * 0.58)
                 if agent:
                     if agent.get("name"):
                         bbox = draw.textbbox((0, 0), agent["name"], font=font_large)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["name"], fill=text_color, font=font_large)
+                        draw.text((x, y_pos), agent["name"], fill="white", font=font_large)
                         y_pos += int(height * 0.08)
                     if agent.get("phone"):
                         bbox = draw.textbbox((0, 0), agent["phone"], font=font_medium)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["phone"], fill=text_color, font=font_medium)
-                        y_pos += int(height * 0.06)
+                        draw.text((x, y_pos), agent["phone"], fill="white", font=font_medium)
+                        y_pos += int(height * 0.05)
                     if agent.get("email"):
                         bbox = draw.textbbox((0, 0), agent["email"], font=font_small)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["email"], fill=text_color, font=font_small)
-                
-                # Website at bottom
-                company_website = branding.get("website", "") or user_data.get("website", "") if user_data else ""
-                if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
-                    x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, int(height * 0.85)), company_website, fill=brand_rgb, font=font_medium)
-                
-                # Logo at bottom
-                if logo_img:
-                    logo_max_w = int(width * 0.40)
-                    logo_max_h = int(height * 0.08)
-                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
-                    logo_size_v = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
-                    logo_resized = logo_img.resize(logo_size_v, Image.LANCZOS)
-                    logo_x = (width - logo_size_v[0]) // 2
-                    outro_img.paste(logo_resized, (logo_x, int(height * 0.91)), logo_resized if logo_resized.mode == 'RGBA' else None)
+                        draw.text((x, y_pos), agent["email"], fill="white", font=font_small)
             else:
-                # Horizontal/Square layout (16:9 or 1:1) - WHITE BACKGROUND
-                # "For more Info" title at top center
-                info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_title)
-                info_w = bbox_info[2] - bbox_info[0]
-                draw.text(((width - info_w) // 2, int(height * 0.06)), info_title, fill=brand_rgb, font=font_title)
+                # Horizontal/Square layout (16:9 or 1:1)
+                # Logo on left side
+                left_margin = int(width * 0.08)
+                
+                if logo_img:
+                    logo_max_w = int(width * 0.25)
+                    logo_max_h = int(height * 0.2)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_y = int(height * 0.1)
+                    outro_img.paste(logo_resized, (left_margin, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
                 
                 # Agent photo on left (circular)
-                agent_section_y = int(height * 0.22)
                 if agent_photo_img:
-                    photo_size = int(height * 0.50)
+                    photo_size = int(height * 0.35)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
-                    photo_x = int(width * 0.10)
-                    outro_img.paste(agent_photo_resized, (photo_x, agent_section_y), mask)
-                    text_x = photo_x + photo_size + int(width * 0.05)
-                else:
-                    text_x = int(width * 0.15)
+                    photo_x = left_margin + int(width * 0.05)
+                    photo_y = int(height * 0.4)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
                 
-                # Agent info - LARGE fonts, dark text
-                y_pos = agent_section_y + int(height * 0.08)
+                # Agent info on right side
+                text_x = int(width * 0.45)
+                y_pos = int(height * 0.35)
+                
                 if agent:
                     if agent.get("name"):
-                        draw.text((text_x, y_pos), agent["name"], fill=text_color, font=font_large)
+                        draw.text((text_x, y_pos), agent["name"], fill="white", font=font_large)
                         y_pos += int(height * 0.12)
                     if agent.get("phone"):
-                        draw.text((text_x, y_pos), agent["phone"], fill=text_color, font=font_medium)
-                        y_pos += int(height * 0.09)
+                        draw.text((text_x, y_pos), agent["phone"], fill="white", font=font_medium)
+                        y_pos += int(height * 0.08)
                     if agent.get("email"):
-                        draw.text((text_x, y_pos), agent["email"], fill=text_color, font=font_small)
-                
-                # Website at bottom center
-                company_website = branding.get("website", "") or user_data.get("website", "") if user_data else ""
-                if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
+                        draw.text((text_x, y_pos), agent["email"], fill="white", font=font_small)
+                else:
+                    # No agent - show generic message
+                    text = "Bedankt voor het kijken"
+                    bbox = draw.textbbox((0, 0), text, font=font_large)
                     x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, int(height * 0.80)), company_website, fill=brand_rgb, font=font_medium)
-                
-                # Logo at bottom right
-                if logo_img:
-                    logo_max_w = int(width * 0.22)
-                    logo_max_h = int(height * 0.12)
-                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
-                    logo_size_h = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
-                    logo_resized = logo_img.resize(logo_size_h, Image.LANCZOS)
-                    logo_x = width - logo_size_h[0] - int(width * 0.05)
-                    outro_img.paste(logo_resized, (logo_x, int(height * 0.85)), logo_resized if logo_resized.mode == 'RGBA' else None)
+                    draw.text((x, height // 2), text, fill="white", font=font_large)
             
             outro_path = os_module.path.join(temp_dir, "outro.jpg")
             outro_img.save(outro_path, "JPEG", quality=95)
