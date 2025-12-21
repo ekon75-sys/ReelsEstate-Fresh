@@ -422,6 +422,7 @@ async def emergent_session(session_data: EmergentSessionRequest, response: Respo
         
         return {
             "status": "success",
+            "session_token": session_data.session_token,
             "user": {
                 "id": user.get("id"),
                 "user_id": user.get("id"),
