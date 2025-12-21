@@ -2849,12 +2849,14 @@ async def generate_project_video(
                 
                 return final
             
-            def add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_caption, brand_rgb):
-                """Add banners and captions to a photo - fonts must be large as image is 1.2x video size"""
-                draw = ImageDraw.Draw(img)
-                img_w, img_h = img.size
-                padding = int(img_w * 0.04)
-                banner_padding = int(img_w * 0.02)
+            def create_static_overlay(width, height, duration, left_banner, price_text, photo_caption, is_vertical, font_banner, font_caption, brand_rgb):
+                """Create a transparent overlay image with static banners and captions"""
+                # Create transparent RGBA image for overlay
+                overlay_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(overlay_img)
+                
+                padding = int(width * 0.03)
+                banner_padding = int(width * 0.015)
                 
                 if is_vertical:
                     # Vertical format (9:16)
@@ -2863,32 +2865,30 @@ async def generate_project_video(
                         bbox = draw.textbbox((0, 0), left_banner, font=font_banner)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
-                        bg_x = (img_w - text_w) // 2 - banner_padding
+                        bg_x = (width - text_w) // 2 - banner_padding
                         bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
+                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb + (255,))
                         draw.text((bg_x + banner_padding, bg_y + banner_padding), left_banner, fill="white", font=font_banner)
                     
-                    # Price banner at bottom center (above caption area)
+                    # Price banner below the "For Sale" banner
                     if price_text:
                         bbox = draw.textbbox((0, 0), price_text, font=font_banner)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
-                        bg_x = (img_w - text_w) // 2 - banner_padding
-                        # Leave space for caption below
-                        caption_space = int(img_h * 0.15) if photo_caption else 0
-                        bg_y = img_h - text_h - banner_padding * 3 - caption_space - padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
+                        bg_x = (width - text_w) // 2 - banner_padding
+                        bg_y = padding + text_h + banner_padding * 4 if left_banner else padding
+                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb + (255,))
                         draw.text((bg_x + banner_padding, bg_y + banner_padding), price_text, fill="white", font=font_banner)
                     
-                    # Caption at very bottom
+                    # Caption as subtitle at bottom
                     if photo_caption:
                         bbox = draw.textbbox((0, 0), photo_caption, font=font_caption)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
-                        text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding * 2
-                        # Semi-transparent background
-                        draw.rectangle([0, text_y - padding, img_w, img_h], fill=(0, 0, 0, 200))
+                        text_x = (width - text_w) // 2
+                        text_y = height - text_h - padding * 3
+                        # Dark semi-transparent background bar across full width
+                        draw.rectangle([0, text_y - padding, width, height], fill=(0, 0, 0, 220))
                         draw.text((text_x, text_y), photo_caption, fill="white", font=font_caption)
                 else:
                     # Horizontal format (16:9 or 1:1)
@@ -2899,7 +2899,7 @@ async def generate_project_video(
                         text_h = bbox[3] - bbox[1]
                         bg_x = padding
                         bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
+                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb + (255,))
                         draw.text((bg_x + banner_padding, bg_y + banner_padding), left_banner, fill="white", font=font_banner)
                     
                     # Price banner top-right
@@ -2907,23 +2907,23 @@ async def generate_project_video(
                         bbox = draw.textbbox((0, 0), price_text, font=font_banner)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
-                        bg_x = img_w - text_w - banner_padding * 2 - padding
+                        bg_x = width - text_w - banner_padding * 2 - padding
                         bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
+                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb + (255,))
                         draw.text((bg_x + banner_padding, bg_y + banner_padding), price_text, fill="white", font=font_banner)
                     
-                    # Caption at bottom center
+                    # Caption as subtitle at bottom - full width bar like TV subtitles
                     if photo_caption:
                         bbox = draw.textbbox((0, 0), photo_caption, font=font_caption)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
-                        text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding * 2
-                        # Semi-transparent background
-                        draw.rectangle([text_x - padding * 2, text_y - padding, text_x + text_w + padding * 2, img_h], fill=(0, 0, 0, 200))
+                        text_x = (width - text_w) // 2
+                        text_y = height - text_h - padding * 2
+                        # Dark semi-transparent background bar across full width
+                        draw.rectangle([0, text_y - padding, width, height], fill=(0, 0, 0, 220))
                         draw.text((text_x, text_y), photo_caption, fill="white", font=font_caption)
                 
-                return img
+                return overlay_img
             
             for i, photo in enumerate(photos):
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
