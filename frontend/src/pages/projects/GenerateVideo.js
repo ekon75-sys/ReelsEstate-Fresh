@@ -324,13 +324,7 @@ const GenerateVideo = () => {
         params: { format_type: selectedFormat, quality: selectedQuality },
         withCredentials: true
       });
-      
-      // Play success sound
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2Onp6WjXx0eYaMk5KLgnZsamZ0hZKdoJiNfnFtdICQnqGcj4BzbG5/kZ+jopiJeW1sdIGToaSfjoBxaWx5i52mppuLfHBsdYWYpamkm4x9cW53iJqoq6Wbi35ycneLnaqsqJyNfnRzeI2frK2om5B/dXV6j6GusKqekYJ3dnyRo6+xq6GTg3h4fZOlsLKsopSFeHl/laexs62klYZ6eoGXqbK0rqWXh3t7gpiqsrSupZiIe3yDmau0trComol9fYWbrLW3sKqaiX59hpyut7i0rJyLgH6Inq+5ubWunIuBf4qfsbu6t7CejYKAi6GxvLu4sq+gjoOCjaK0vby6tLGhj4SDjqS1vr27tbOij4WEkKW3v769uLWlkYaFkqa4wL++ubankoeGk6e5wMC/u7qpk4iHlKi6wcDAu7uqlImIlam7wcHBvLyrlYqJlqq8wsLCvr2slomKl6u9w8PDv76tlYqLmK2+xMTEwL+ul4uMma6/xcXFwcCvmIyMmq/AxsbGwsGwmY2Nm7HBx8fHw8KxmY2OnLLCyMjIxMOym46OnbPDycnJxcSznI+PoLTEysrKxsW0nZCQobXFy8vLx8a1npGRorXGzMzMyMe2n5KSo7bHzc3Nyci3oJOTpLfIzs7OysqooZSUpbjJz8/PzMu5pZWWprrK0NDQzcy6ppWWp7vL0dHRzs27p5aXqLzM0tLS0M68qJeYqb3N09PT0c+9qZiZqr7O1NTU0tC+qpmaq7/P1dXV09HAq5qbrMDQ1tbW1NLBrJucrsDR1tfX1dPCrZydrcHS19jY1tTDrp2er8LT2NnZ19XErp6fsMLU2drZ2NbFr5+gscPV2tvb2dfGsKChssTV29zc2tjHsaGis8XW3N3d29nIsqKjtcbX3d7e3NrJs6OktsfY3t/f3dvKtKSluMjZ39/g3tzLtaWmusnZ4ODh397MtqanusnZ4eHi4N/NuKiousnZ4eHi4N/OuKkou8na4uLj4eDOuaqqvMra4+Pk4uHPuqurvcrb4+Pk4uHQu6ysvcrb4+Pl4+LRu62tvsvb5OXl5OPSvK6uvsvb5OXl5OPTva6vv8zc5ebl5eTUvq+wwMzc5ubm5uXVv7CxwM3d5ufn5+bWwLGywc3d5+jn5+bXwbKzwc7d5+jo6OfYwrO0ws7e6Ojo6OfZw7S1w87e6eno6ejaw7W2xM/f6unp6enaxLa3xM/f6+rq6uraxbe3xdDf6+rr6+rbxri4xdDg7Ovr6+vcxrm5xtHg7Ozs7Ozdx7q6xtHg7Ozs7O3dyLq7x9Hh7e3t7e7eybu8yNLh7e3t7e/fy7y9yNLh7u7u7u/gzL29ydLi7u/v7/DgzL6+ydLi7u/v7/DhzL6/ytPi7+/v8PHhzb+/ytPj8PDw8PLhzr/AytPj8PDw8fLiz8DAy9Tj8fHx8fPjz8HBy9Tk8fHx8vPk0MHCzNTk8fLy8vTk0cLCzNXl8vLy8vTl0cPDzdXl8vPz8/Xl0sPEzdbl8/Pz9Pbm08TFztbl8/Pz9Pbn1MXFztfm9PT09Pfo1cbGz9fm9PT09fjo1sfH0Nfn9fX19fno18fI0Njn9fX19vrp2MjJ0djn9vb29vvp2cnK0tnp9vb29/zq2srL09rp9/f39/3r28vL1Nrq9/f3+P3s3MzM1Nvq+Pj4+P7s3M3N1dzr+Pj4+f/t3c7O1t3s+fn5+f/u3s/P193s+fn5+v/v38/Q2N7t+vr6+wDw4NDR2d/u+vr6/ADx4dHS2uDu+/v7/AHy4tLT2+Hv+/v7/QLz49PU3OLw/Pz8/gP049XV3ePx/Pz9/wT15NbW3uTx/f39AAX25tfX3+Xy/f3+AQb359jY4Obz/v7/Agf46NnZ4ef0/v7/Awj56dra4uj1//////8=');
-      audio.volume = 0.5;
-      audio.play().catch(() => {}); // Ignore if browser blocks autoplay
-      
-      toast.success(`Video gegenereerd! ${response.data.resolution || ''} ${response.data.file_size_mb ? response.data.file_size_mb + 'MB' : ''}`);
+      toast.success(`Video gegenereerd! ${response.data.resolution}, ${response.data.file_size_mb}MB`);
       await loadVideos();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Video generation failed');
@@ -491,45 +485,39 @@ const GenerateVideo = () => {
                 <span className="text-sm text-gray-500">Je plan: <strong>{userPlan}</strong></span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {allowedQualities.map(quality => {
-                  const planRequired = {
-                    'sd': 'Basic',
-                    'hd': 'Professional', 
-                    'fullhd': 'Enterprise',
-                    '4k': 'AI Caption'
-                  };
-                  return (
-                    <Card
-                      key={quality.value}
-                      className={`cursor-pointer transition-all relative ${
-                        !quality.allowed 
-                          ? 'opacity-60 cursor-not-allowed border-gray-200'
-                          : selectedQuality === quality.value
-                            ? 'border-brand-orange-500 border-2 bg-brand-orange-50'
-                            : 'border-gray-200 hover:border-brand-orange-300'
-                      }`}
-                      onClick={() => quality.allowed && setSelectedQuality(quality.value)}
-                    >
-                      {!quality.allowed && (
-                        <div className="absolute top-1 right-1">
-                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
-                            {planRequired[quality.value]}+
-                          </span>
-                        </div>
-                      )}
-                      <CardContent className="p-4 text-center">
-                        <h4 className="font-semibold">{quality.label}</h4>
-                        <p className="text-xs text-gray-500">{quality.description}</p>
-                        {!quality.allowed && (
-                          <p className="text-xs text-orange-600 mt-1">
-                            Vereist {planRequired[quality.value]} plan
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {allowedQualities.map(quality => (
+                  <Card
+                    key={quality.value}
+                    className={`cursor-pointer transition-all relative ${
+                      !quality.allowed 
+                        ? 'opacity-50 cursor-not-allowed border-gray-200'
+                        : selectedQuality === quality.value
+                          ? 'border-brand-orange-500 border-2 bg-brand-orange-50'
+                          : 'border-gray-200 hover:border-brand-orange-300'
+                    }`}
+                    onClick={() => quality.allowed && setSelectedQuality(quality.value)}
+                  >
+                    {!quality.allowed && (
+                      <div className="absolute top-1 right-1">
+                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                          Upgrade
+                        </span>
+                      </div>
+                    )}
+                    <CardContent className="p-4 text-center">
+                      <h4 className="font-semibold">{quality.label}</h4>
+                      <p className="text-xs text-gray-500">{quality.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
+              {allowedQualities.some(q => !q.allowed) && (
+                <p className="text-sm text-gray-500 text-center">
+                  <a href="/settings/subscription" className="text-brand-orange-500 hover:underline">
+                    Upgrade je plan
+                  </a> voor hogere videokwaliteit
+                </p>
+              )}
             </div>
 
             {/* Generate Button */}
