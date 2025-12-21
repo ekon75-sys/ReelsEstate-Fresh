@@ -2849,12 +2849,12 @@ async def generate_project_video(
                 
                 return final
             
-            def add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_small, brand_rgb):
-                """Add banners and captions to a photo"""
+            def add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_caption, brand_rgb):
+                """Add banners and captions to a photo - fonts must be large as image is 1.2x video size"""
                 draw = ImageDraw.Draw(img)
                 img_w, img_h = img.size
-                padding = int(img_w * 0.03)
-                banner_padding = int(img_w * 0.015)
+                padding = int(img_w * 0.04)
+                banner_padding = int(img_w * 0.02)
                 
                 if is_vertical:
                     # Vertical format (9:16)
@@ -2875,21 +2875,21 @@ async def generate_project_video(
                         text_h = bbox[3] - bbox[1]
                         bg_x = (img_w - text_w) // 2 - banner_padding
                         # Leave space for caption below
-                        caption_space = int(img_h * 0.12) if photo_caption else 0
-                        bg_y = img_h - text_h - banner_padding * 3 - caption_space
+                        caption_space = int(img_h * 0.15) if photo_caption else 0
+                        bg_y = img_h - text_h - banner_padding * 3 - caption_space - padding
                         draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
                         draw.text((bg_x + banner_padding, bg_y + banner_padding), price_text, fill="white", font=font_banner)
                     
                     # Caption at very bottom
                     if photo_caption:
-                        bbox = draw.textbbox((0, 0), photo_caption, font=font_small)
+                        bbox = draw.textbbox((0, 0), photo_caption, font=font_caption)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
                         text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding
+                        text_y = img_h - text_h - padding * 2
                         # Semi-transparent background
-                        draw.rectangle([0, text_y - padding, img_w, img_h], fill=(0, 0, 0, 180))
-                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_small)
+                        draw.rectangle([0, text_y - padding, img_w, img_h], fill=(0, 0, 0, 200))
+                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_caption)
                 else:
                     # Horizontal format (16:9 or 1:1)
                     # "For Sale" banner top-left
@@ -2914,14 +2914,14 @@ async def generate_project_video(
                     
                     # Caption at bottom center
                     if photo_caption:
-                        bbox = draw.textbbox((0, 0), photo_caption, font=font_small)
+                        bbox = draw.textbbox((0, 0), photo_caption, font=font_caption)
                         text_w = bbox[2] - bbox[0]
                         text_h = bbox[3] - bbox[1]
                         text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding
+                        text_y = img_h - text_h - padding * 2
                         # Semi-transparent background
-                        draw.rectangle([text_x - padding, text_y - padding // 2, text_x + text_w + padding, img_h], fill=(0, 0, 0))
-                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_small)
+                        draw.rectangle([text_x - padding * 2, text_y - padding, text_x + text_w + padding * 2, img_h], fill=(0, 0, 0, 200))
+                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_caption)
                 
                 return img
             
