@@ -60,11 +60,20 @@ const AuthCallback = () => {
 
         console.log('Session stored in backend');
 
+        // Store session token in localStorage for auth header fallback
+        const sessionToken = backendResponse.data.session_token;
+        if (sessionToken) {
+          localStorage.setItem('session_token', sessionToken);
+        }
+
+        // Update auth context with user data
+        const user = backendResponse.data.user;
+        setUserData(user, sessionToken);
+
         // Clean URL and redirect to dashboard
         window.history.replaceState({}, document.title, '/dashboard');
 
         // Check onboarding status and redirect
-        const user = backendResponse.data.user;
         const onboardingStep = user.onboarding_step || 0;
 
         if (onboardingStep < 6) {
