@@ -2612,10 +2612,13 @@ async def generate_project_video(
     if not photos or len(photos) == 0:
         raise HTTPException(status_code=400, detail="Project has no photos")
     
-    # Get branding info for intro/outro
+    # Get branding info for intro/outro - branding fields are stored directly on user document
     user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
-    branding = user_data.get("branding", {}) if user_data else {}
-    main_color = branding.get("main_color", "#FF6B35")
+    
+    # Get branding values directly from user document (not from a nested branding object)
+    main_color = user_data.get("main_color", "#FF6B35") if user_data else "#FF6B35"
+    logo_url_from_user = user_data.get("logo_url", "") if user_data else ""
+    company_website = user_data.get("website", "") if user_data else ""
     
     # Convert hex color to RGB tuple
     def hex_to_rgb(hex_color):
@@ -2624,15 +2627,11 @@ async def generate_project_video(
     
     brand_rgb = hex_to_rgb(main_color)
     
-    # Get agent info if configured
+    # Get agent info if configured - agents are in separate collection, not user document
     agent_id = project.get("agent_id")
     agent = None
-    if agent_id and user_data:
-        agents = user_data.get("agents", [])
-        for a in agents:
-            if a.get("id") == agent_id:
-                agent = a
-                break
+    if agent_id:
+        agent = await db.agents.find_one({"id": agent_id, "user_id": user["id"]}, {"_id": 0})
     
     # Determine video dimensions based on format and quality
     quality_settings = {
