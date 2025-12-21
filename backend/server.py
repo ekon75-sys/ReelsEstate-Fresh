@@ -117,15 +117,9 @@ cors_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000"
 ]
-
-# Allow Vercel preview deployments dynamically
-import re
-cors_origin_regex = re.compile(r"https://.*\.vercel\.app")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -203,16 +197,6 @@ async def debug_oauth_config():
         "google_client_id": os.getenv("GOOGLE_CLIENT_ID", "NOT SET")[:20] + "..." if os.getenv("GOOGLE_CLIENT_ID") else "NOT SET",
         "google_redirect_uri_env": os.getenv("GOOGLE_REDIRECT_URI", "NOT SET"),
         "expected_redirect_uri": "https://reels-estate.app/auth/google/callback"
-    }
-
-@app.get("/api/debug/cors-test")
-async def debug_cors_test(request: Request):
-    """Debug endpoint to test CORS and cookies"""
-    return {
-        "origin": request.headers.get("origin", "NO ORIGIN"),
-        "cookies": list(request.cookies.keys()),
-        "has_session_cookie": "session_token" in request.cookies,
-        "headers": dict(request.headers)
     }
 
 # Test MongoDB connection
@@ -2628,13 +2612,10 @@ async def generate_project_video(
     if not photos or len(photos) == 0:
         raise HTTPException(status_code=400, detail="Project has no photos")
     
-    # Get branding info for intro/outro - branding fields are stored directly on user document
+    # Get branding info for intro/outro
     user_data = await db.users.find_one({"id": user["id"]}, {"_id": 0})
-    
-    # Get branding values directly from user document (not from a nested branding object)
-    main_color = user_data.get("main_color", "#FF6B35") if user_data else "#FF6B35"
-    logo_url_from_user = user_data.get("logo_url", "") if user_data else ""
-    company_website = user_data.get("website", "") if user_data else ""
+    branding = user_data.get("branding", {}) if user_data else {}
+    main_color = branding.get("main_color", "#FF6B35")
     
     # Convert hex color to RGB tuple
     def hex_to_rgb(hex_color):
@@ -2643,11 +2624,15 @@ async def generate_project_video(
     
     brand_rgb = hex_to_rgb(main_color)
     
-    # Get agent info if configured - agents are in separate collection, not user document
+    # Get agent info if configured
     agent_id = project.get("agent_id")
     agent = None
-    if agent_id:
-        agent = await db.agents.find_one({"id": agent_id, "user_id": user["id"]}, {"_id": 0})
+    if agent_id and user_data:
+        agents = user_data.get("agents", [])
+        for a in agents:
+            if a.get("id") == agent_id:
+                agent = a
+                break
     
     # Determine video dimensions based on format and quality
     quality_settings = {
@@ -2667,28 +2652,22 @@ async def generate_project_video(
             all_clips = []
             duration_per_photo = 4  # seconds per photo
             
-            # Font sizes based on video dimensions - INCREASED for better visibility
-            font_size_xlarge = max(48, int(height * 0.10))   # Extra large for title
-            font_size_large = max(36, int(height * 0.08))    # Large for names, headers
-            font_size_medium = max(28, int(height * 0.055))  # Medium for subtitles
-            font_size_small = max(20, int(height * 0.038))   # Small for details
-            font_size_banner = max(18, int(height * 0.032))  # Banner text
+            # Font sizes based on video dimensions
+            font_size_large = max(30, int(height * 0.08))
+            font_size_medium = max(24, int(height * 0.05))
+            font_size_small = max(18, int(height * 0.035))
             
             try:
-                font_xlarge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_xlarge)
                 font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_large)
                 font_medium = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_medium)
                 font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size_small)
-                font_banner = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_banner)
             except:
-                font_xlarge = ImageFont.load_default()
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
                 font_small = ImageFont.load_default()
-                font_banner = ImageFont.load_default()
             
-            # Get company logo from user document (stored directly on user, not in branding object)
-            logo_url = logo_url_from_user
+            # Get company logo from branding
+            logo_url = branding.get("logo_url", "")
             logo_img = None
             if logo_url and logo_url.startswith("data:"):
                 try:
@@ -2699,249 +2678,167 @@ async def generate_project_video(
                     logo_img = None
             
             title = project.get("title", "Property Tour")
-            left_banner = project.get("left_banner", "")
-            right_banner_price = project.get("right_banner_price", "")
-            currency = project.get("currency", "€")
             
-            # Format price
-            price_text = ""
-            if right_banner_price:
-                price_text = f"{currency} {right_banner_price}"
-            
-            is_vertical = format_type == "9:16"
-            
-            # === CREATE INTRO (5 seconds) - WHITE BACKGROUND ===
-            intro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
-            draw_intro = ImageDraw.Draw(intro_img)
-            
-            # Logo at top center - larger size
-            logo_y_top = int(height * 0.12)
+            # === CREATE INTRO (5 seconds, 3 frames) ===
+            # Frame 1: Logo only (0-1 sec)
+            intro1_img = Image.new('RGB', (width, height), color=brand_rgb)
             if logo_img:
-                logo_max_w = int(width * 0.5)  # Increased from 0.4
-                logo_max_h = int(height * 0.25)  # Increased from 0.2
+                # Scale logo to fit (max 40% of width, max 30% of height)
+                logo_max_w = int(width * 0.4)
+                logo_max_h = int(height * 0.3)
                 logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                 logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                 logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
                 logo_x = (width - logo_size[0]) // 2
-                intro_img.paste(logo_resized, (logo_x, logo_y_top), logo_resized if logo_resized.mode == 'RGBA' else None)
+                logo_y = (height - logo_size[1]) // 2
+                intro1_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+            intro1_path = os_module.path.join(temp_dir, "intro1.jpg")
+            intro1_img.save(intro1_path, "JPEG", quality=95)
+            intro1_clip = ImageClip(intro1_path, duration=1)
+            all_clips.append(intro1_clip)
             
-            # "presents" in the middle (centered) - using larger font
-            presents_text = "presents"
-            bbox_presents = draw_intro.textbbox((0, 0), presents_text, font=font_large)
-            presents_w = bbox_presents[2] - bbox_presents[0]
-            presents_h = bbox_presents[3] - bbox_presents[1]
-            presents_x = (width - presents_w) // 2
-            presents_y = int(height * 0.48)
-            draw_intro.text((presents_x, presents_y), presents_text, fill=brand_rgb, font=font_large)
+            # Frame 2: Logo + "presents:" (1-2 sec)
+            intro2_img = Image.new('RGB', (width, height), color=brand_rgb)
+            draw2 = ImageDraw.Draw(intro2_img)
+            if logo_img:
+                logo_y_offset = int(height * 0.3)
+                logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                logo_x = (width - logo_size[0]) // 2
+                intro2_img.paste(logo_resized, (logo_x, logo_y_offset), logo_resized if logo_resized.mode == 'RGBA' else None)
+            presents_text = "presents:"
+            bbox = draw2.textbbox((0, 0), presents_text, font=font_medium)
+            text_w = bbox[2] - bbox[0]
+            text_y = int(height * 0.65)
+            draw2.text(((width - text_w) // 2, text_y), presents_text, fill="white", font=font_medium)
+            intro2_path = os_module.path.join(temp_dir, "intro2.jpg")
+            intro2_img.save(intro2_path, "JPEG", quality=95)
+            intro2_clip = ImageClip(intro2_path, duration=1)
+            all_clips.append(intro2_clip)
             
-            # Title below presents - using XLARGE font for maximum visibility
-            bbox_title = draw_intro.textbbox((0, 0), title, font=font_xlarge)
-            title_w = bbox_title[2] - bbox_title[0]
+            # Frame 3: Title fade in (2-5 sec)
+            intro3_img = Image.new('RGB', (width, height), color=brand_rgb)
+            draw3 = ImageDraw.Draw(intro3_img)
+            # Title centered
+            bbox = draw3.textbbox((0, 0), title, font=font_large)
+            title_w = bbox[2] - bbox[0]
+            title_h = bbox[3] - bbox[1]
             title_x = (width - title_w) // 2
-            title_y = presents_y + presents_h + int(height * 0.06)
-            draw_intro.text((title_x, title_y), title, fill=(50, 50, 50), font=font_xlarge)
-            
-            intro_path = os_module.path.join(temp_dir, "intro.jpg")
-            intro_img.save(intro_path, "JPEG", quality=95)
-            intro_clip = ImageClip(intro_path, duration=5)
-            all_clips.append(intro_clip)
+            title_y = (height - title_h) // 2
+            draw3.text((title_x, title_y), title, fill="white", font=font_large)
+            # Subtitle if exists
+            left_banner = project.get("left_banner", "")
+            if left_banner and left_banner != "No Banner":
+                bbox2 = draw3.textbbox((0, 0), left_banner, font=font_small)
+                banner_w = bbox2[2] - bbox2[0]
+                draw3.text(((width - banner_w) // 2, title_y + title_h + 20), left_banner, fill="white", font=font_small)
+            intro3_path = os_module.path.join(temp_dir, "intro3.jpg")
+            intro3_img.save(intro3_path, "JPEG", quality=95)
+            intro3_clip = ImageClip(intro3_path, duration=3)
+            all_clips.append(intro3_clip)
             
             # === PROCESS PHOTOS WITH KEN BURNS EFFECT ===
             def create_ken_burns_clip(img_path, duration, width, height, effect_type):
                 """Create a clip with Ken Burns (pan/zoom) effect"""
                 clip = ImageClip(img_path, duration=duration)
                 
-                # Get original image size (1.2x video size as set during resize)
-                img_w = int(width * 1.2)
-                img_h = int(height * 1.2)
+                # Scale factor for pan effects (image is 1.2x larger than video)
+                pan_range = 0.1  # 10% pan range
+                zoom_range = 0.08  # 8% zoom range
                 
-                # Calculate center position for the image
-                center_x = (width - img_w) / 2
-                center_y = (height - img_h) / 2
-                
-                # Keep movements subtle to ensure image stays in frame
-                # Since image is 20% larger, we have safe margin for small movements
-                max_pan_x = width * 0.05  # 5% of video width - very subtle
-                max_pan_y = height * 0.05  # 5% of video height - very subtle
-                zoom_start = 1.0
-                zoom_end = 1.06  # 6% zoom max
-                
-                # Simple, reliable Ken Burns effects - all centered properly
+                # Extended Ken Burns effects
                 if effect_type == 0:
-                    # Zoom in slowly from center
-                    clip = clip.resized(lambda t: zoom_start + (zoom_end - zoom_start) * t / duration)
+                    # Zoom in slowly
+                    clip = clip.resized(lambda t: 1 + zoom_range * t / duration)
                     clip = clip.with_position('center')
                     
                 elif effect_type == 1:
-                    # Zoom out slowly to center
-                    clip = clip.resized(lambda t: zoom_end - (zoom_end - zoom_start) * t / duration)
+                    # Zoom out slowly
+                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * t / duration)
                     clip = clip.with_position('center')
                     
                 elif effect_type == 2:
-                    # Slow pan left to right - no zoom
-                    def pos_lr(t):
-                        x = center_x - max_pan_x + (max_pan_x * 2) * t / duration
-                        return (x, center_y)
-                    clip = clip.with_position(pos_lr)
+                    # Pan left to right
+                    clip = clip.with_position(lambda t: (
+                        -width * pan_range + (width * pan_range * 2) * t / duration,
+                        'center'
+                    ))
                     
                 elif effect_type == 3:
-                    # Slow pan right to left - no zoom
-                    def pos_rl(t):
-                        x = center_x + max_pan_x - (max_pan_x * 2) * t / duration
-                        return (x, center_y)
-                    clip = clip.with_position(pos_rl)
+                    # Pan right to left
+                    clip = clip.with_position(lambda t: (
+                        width * pan_range - (width * pan_range * 2) * t / duration,
+                        'center'
+                    ))
                     
                 elif effect_type == 4:
-                    # Slow pan top to bottom - no zoom
-                    def pos_tb(t):
-                        y = center_y - max_pan_y + (max_pan_y * 2) * t / duration
-                        return (center_x, y)
-                    clip = clip.with_position(pos_tb)
+                    # Pan top to bottom
+                    clip = clip.with_position(lambda t: (
+                        'center',
+                        -height * pan_range + (height * pan_range * 2) * t / duration
+                    ))
                     
                 elif effect_type == 5:
-                    # Slow pan bottom to top - no zoom
-                    def pos_bt(t):
-                        y = center_y + max_pan_y - (max_pan_y * 2) * t / duration
-                        return (center_x, y)
-                    clip = clip.with_position(pos_bt)
+                    # Pan bottom to top
+                    clip = clip.with_position(lambda t: (
+                        'center',
+                        height * pan_range - (height * pan_range * 2) * t / duration
+                    ))
                     
                 elif effect_type == 6:
-                    # Gentle zoom in + pan left to right
-                    clip = clip.resized(lambda t: zoom_start + 0.03 * t / duration)
-                    def pos_lr_zoom(t):
-                        x = center_x - max_pan_x * 0.5 + max_pan_x * t / duration
-                        return (x, center_y)
-                    clip = clip.with_position(pos_lr_zoom)
+                    # Zoom in + pan left to right
+                    clip = clip.resized(lambda t: 1 + zoom_range * 0.5 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        -width * pan_range * 0.5 + (width * pan_range) * t / duration,
+                        'center'
+                    ))
                     
                 elif effect_type == 7:
-                    # Gentle zoom in + pan right to left
-                    clip = clip.resized(lambda t: zoom_start + 0.03 * t / duration)
-                    def pos_rl_zoom(t):
-                        x = center_x + max_pan_x * 0.5 - max_pan_x * t / duration
-                        return (x, center_y)
-                    clip = clip.with_position(pos_rl_zoom)
+                    # Zoom in + pan right to left
+                    clip = clip.resized(lambda t: 1 + zoom_range * 0.5 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        width * pan_range * 0.5 - (width * pan_range) * t / duration,
+                        'center'
+                    ))
                     
                 elif effect_type == 8:
-                    # Gentle zoom out + pan top to bottom
-                    clip = clip.resized(lambda t: 1.03 - 0.03 * t / duration)
-                    def pos_tb_zoom(t):
-                        y = center_y - max_pan_y * 0.5 + max_pan_y * t / duration
-                        return (center_x, y)
-                    clip = clip.with_position(pos_tb_zoom)
+                    # Zoom out + pan top to bottom
+                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * 0.5 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        'center',
+                        -height * pan_range * 0.5 + (height * pan_range) * t / duration
+                    ))
                     
                 elif effect_type == 9:
-                    # Gentle zoom out + pan bottom to top
-                    clip = clip.resized(lambda t: 1.03 - 0.03 * t / duration)
-                    def pos_bt_zoom(t):
-                        y = center_y + max_pan_y * 0.5 - max_pan_y * t / duration
-                        return (center_x, y)
-                    clip = clip.with_position(pos_bt_zoom)
+                    # Zoom out + pan bottom to top
+                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * 0.5 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        'center',
+                        height * pan_range * 0.5 - (height * pan_range) * t / duration
+                    ))
                     
                 elif effect_type == 10:
-                    # Diagonal: top-left to bottom-right (subtle)
-                    clip = clip.resized(lambda t: zoom_start + 0.02 * t / duration)
-                    def pos_diag_1(t):
-                        x = center_x - max_pan_x * 0.3 + (max_pan_x * 0.6) * t / duration
-                        y = center_y - max_pan_y * 0.3 + (max_pan_y * 0.6) * t / duration
-                        return (x, y)
-                    clip = clip.with_position(pos_diag_1)
+                    # Diagonal pan: top-left to bottom-right + zoom
+                    clip = clip.resized(lambda t: 1 + zoom_range * 0.3 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        -width * pan_range * 0.5 + (width * pan_range) * t / duration,
+                        -height * pan_range * 0.5 + (height * pan_range) * t / duration
+                    ))
                     
                 else:
-                    # Diagonal: bottom-right to top-left (subtle)
-                    clip = clip.resized(lambda t: zoom_start + 0.02 * t / duration)
-                    def pos_diag_2(t):
-                        x = center_x + max_pan_x * 0.3 - (max_pan_x * 0.6) * t / duration
-                        y = center_y + max_pan_y * 0.3 - (max_pan_y * 0.6) * t / duration
-                        return (x, y)
-                    clip = clip.with_position(pos_diag_2)
+                    # Diagonal pan: bottom-right to top-left + zoom
+                    clip = clip.resized(lambda t: 1 + zoom_range * 0.3 * t / duration)
+                    clip = clip.with_position(lambda t: (
+                        width * pan_range * 0.5 - (width * pan_range) * t / duration,
+                        height * pan_range * 0.5 - (height * pan_range) * t / duration
+                    ))
                 
                 container = ColorClip(size=(width, height), color=(0, 0, 0), duration=duration)
                 final = CompositeVideoClip([container, clip], size=(width, height))
                 
                 return final
             
-            def add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_small, brand_rgb):
-                """Add banners and captions to a photo"""
-                draw = ImageDraw.Draw(img)
-                img_w, img_h = img.size
-                padding = int(img_w * 0.03)
-                banner_padding = int(img_w * 0.015)
-                
-                if is_vertical:
-                    # Vertical format (9:16)
-                    # "For Sale" banner at top center
-                    if left_banner and left_banner != "No Banner":
-                        bbox = draw.textbbox((0, 0), left_banner, font=font_banner)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        bg_x = (img_w - text_w) // 2 - banner_padding
-                        bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
-                        draw.text((bg_x + banner_padding, bg_y + banner_padding), left_banner, fill="white", font=font_banner)
-                    
-                    # Price banner at bottom center (above caption area)
-                    if price_text:
-                        bbox = draw.textbbox((0, 0), price_text, font=font_banner)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        bg_x = (img_w - text_w) // 2 - banner_padding
-                        # Leave space for caption below
-                        caption_space = int(img_h * 0.12) if photo_caption else 0
-                        bg_y = img_h - text_h - banner_padding * 3 - caption_space
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
-                        draw.text((bg_x + banner_padding, bg_y + banner_padding), price_text, fill="white", font=font_banner)
-                    
-                    # Caption at very bottom
-                    if photo_caption:
-                        bbox = draw.textbbox((0, 0), photo_caption, font=font_small)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding
-                        # Semi-transparent background
-                        draw.rectangle([0, text_y - padding, img_w, img_h], fill=(0, 0, 0, 180))
-                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_small)
-                else:
-                    # Horizontal format (16:9 or 1:1)
-                    # "For Sale" banner top-left
-                    if left_banner and left_banner != "No Banner":
-                        bbox = draw.textbbox((0, 0), left_banner, font=font_banner)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        bg_x = padding
-                        bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
-                        draw.text((bg_x + banner_padding, bg_y + banner_padding), left_banner, fill="white", font=font_banner)
-                    
-                    # Price banner top-right
-                    if price_text:
-                        bbox = draw.textbbox((0, 0), price_text, font=font_banner)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        bg_x = img_w - text_w - banner_padding * 2 - padding
-                        bg_y = padding
-                        draw.rectangle([bg_x, bg_y, bg_x + text_w + banner_padding * 2, bg_y + text_h + banner_padding * 2], fill=brand_rgb)
-                        draw.text((bg_x + banner_padding, bg_y + banner_padding), price_text, fill="white", font=font_banner)
-                    
-                    # Caption at bottom center
-                    if photo_caption:
-                        bbox = draw.textbbox((0, 0), photo_caption, font=font_small)
-                        text_w = bbox[2] - bbox[0]
-                        text_h = bbox[3] - bbox[1]
-                        text_x = (img_w - text_w) // 2
-                        text_y = img_h - text_h - padding
-                        # Semi-transparent background
-                        draw.rectangle([text_x - padding, text_y - padding // 2, text_x + text_w + padding, img_h], fill=(0, 0, 0))
-                        draw.text((text_x, text_y), photo_caption, fill="white", font=font_small)
-                
-                return img
-            
             for i, photo in enumerate(photos):
                 photo_url = photo.get("enhanced_url") or photo.get("original_url")
-                photo_caption = photo.get("caption", "")
-                # Skip placeholder captions
-                if photo_caption in ["Enhanced", "Virtually Staged", ""]:
-                    photo_caption = ""
                 
                 if not photo_url or not photo_url.startswith("data:"):
                     continue
@@ -2978,9 +2875,6 @@ async def generate_project_video(
                 
                 img = img.resize(zoom_size, Image.LANCZOS)
                 
-                # Add banners and captions
-                img = add_overlays_to_image(img, photo_caption, left_banner, price_text, is_vertical, font_banner, font_small, brand_rgb)
-                
                 resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
                 img.save(resized_path, "JPEG", quality=95)
                 
@@ -2989,8 +2883,12 @@ async def generate_project_video(
                 photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
                 all_clips.append(photo_clip)
             
-            # === CREATE OUTRO (5 seconds) - WHITE BACKGROUND ===
-            outro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
+            # === CREATE OUTRO (5 seconds) ===
+            # Adaptive layout based on format
+            is_vertical = format_type == "9:16"
+            is_square = format_type == "1:1"
+            
+            outro_img = Image.new('RGB', (width, height), color=brand_rgb)
             draw = ImageDraw.Draw(outro_img)
             
             # Get agent photo if available
@@ -3005,122 +2903,92 @@ async def generate_project_video(
                     except:
                         agent_photo_img = None
             
-            text_color = (50, 50, 50)  # Dark gray for text on white background
-            
             if is_vertical:
-                # Vertical layout (9:16) - WHITE BACKGROUND
-                # "For more Info" title at top in brand color
-                info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_large)
-                info_w = bbox_info[2] - bbox_info[0]
-                info_x = (width - info_w) // 2
-                info_y = int(height * 0.06)
-                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_large)
+                # Vertical layout (9:16)
+                # Logo at top
+                if logo_img:
+                    logo_max_w = int(width * 0.5)
+                    logo_max_h = int(height * 0.12)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_x = (width - logo_size[0]) // 2
+                    logo_y = int(height * 0.08)
+                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
                 
                 # Agent photo in center (circular)
-                photo_y_start = int(height * 0.15)
                 if agent_photo_img:
-                    photo_size = int(width * 0.45)
+                    photo_size = int(width * 0.5)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
+                    # Create circular mask
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
                     photo_x = (width - photo_size) // 2
-                    outro_img.paste(agent_photo_resized, (photo_x, photo_y_start), mask)
-                    y_pos = photo_y_start + photo_size + int(height * 0.04)
-                else:
-                    y_pos = int(height * 0.35)
+                    photo_y = int(height * 0.28)
+                    outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
                 
-                # Agent info below photo
+                # Agent info below
+                y_pos = int(height * 0.58)
                 if agent:
                     if agent.get("name"):
                         bbox = draw.textbbox((0, 0), agent["name"], font=font_large)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["name"], fill=text_color, font=font_large)
-                        y_pos += int(height * 0.07)
+                        draw.text((x, y_pos), agent["name"], fill="white", font=font_large)
+                        y_pos += int(height * 0.08)
                     if agent.get("phone"):
                         bbox = draw.textbbox((0, 0), agent["phone"], font=font_medium)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["phone"], fill=text_color, font=font_medium)
+                        draw.text((x, y_pos), agent["phone"], fill="white", font=font_medium)
                         y_pos += int(height * 0.05)
                     if agent.get("email"):
                         bbox = draw.textbbox((0, 0), agent["email"], font=font_small)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["email"], fill=text_color, font=font_small)
-                        y_pos += int(height * 0.05)
-                
-                # Website at bottom
-                if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
-                    x = (width - (bbox[2] - bbox[0])) // 2
-                    y = int(height * 0.88)
-                    draw.text((x, y), company_website, fill=brand_rgb, font=font_medium)
-                
-                # Logo at very bottom
-                if logo_img:
-                    logo_max_w = int(width * 0.35)
-                    logo_max_h = int(height * 0.08)
-                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
-                    logo_size_v = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
-                    logo_resized = logo_img.resize(logo_size_v, Image.LANCZOS)
-                    logo_x = (width - logo_size_v[0]) // 2
-                    logo_y = int(height * 0.92)
-                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                        draw.text((x, y_pos), agent["email"], fill="white", font=font_small)
             else:
-                # Horizontal layout (16:9 or 1:1) - WHITE BACKGROUND
-                # "For more Info" title at top center in brand color
-                info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_large)
-                info_w = bbox_info[2] - bbox_info[0]
-                info_x = (width - info_w) // 2
-                info_y = int(height * 0.08)
-                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_large)
+                # Horizontal/Square layout (16:9 or 1:1)
+                # Logo on left side
+                left_margin = int(width * 0.08)
                 
-                # Agent photo on left side (circular)
-                agent_section_y = int(height * 0.25)
+                if logo_img:
+                    logo_max_w = int(width * 0.25)
+                    logo_max_h = int(height * 0.2)
+                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
+                    logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
+                    logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
+                    logo_y = int(height * 0.1)
+                    outro_img.paste(logo_resized, (left_margin, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                
+                # Agent photo on left (circular)
                 if agent_photo_img:
-                    photo_size = int(height * 0.45)
+                    photo_size = int(height * 0.35)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
-                    photo_x = int(width * 0.12)
-                    photo_y = agent_section_y
+                    photo_x = left_margin + int(width * 0.05)
+                    photo_y = int(height * 0.4)
                     outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
-                    text_x = photo_x + photo_size + int(width * 0.06)
-                else:
-                    text_x = int(width * 0.2)
                 
                 # Agent info on right side
-                y_pos = agent_section_y + int(height * 0.05)
+                text_x = int(width * 0.45)
+                y_pos = int(height * 0.35)
+                
                 if agent:
                     if agent.get("name"):
-                        draw.text((text_x, y_pos), agent["name"], fill=text_color, font=font_large)
+                        draw.text((text_x, y_pos), agent["name"], fill="white", font=font_large)
                         y_pos += int(height * 0.12)
                     if agent.get("phone"):
-                        draw.text((text_x, y_pos), agent["phone"], fill=text_color, font=font_medium)
+                        draw.text((text_x, y_pos), agent["phone"], fill="white", font=font_medium)
                         y_pos += int(height * 0.08)
                     if agent.get("email"):
-                        draw.text((text_x, y_pos), agent["email"], fill=text_color, font=font_small)
-                        y_pos += int(height * 0.08)
-                
-                # Website and logo at bottom
-                bottom_y = int(height * 0.82)
-                if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
+                        draw.text((text_x, y_pos), agent["email"], fill="white", font=font_small)
+                else:
+                    # No agent - show generic message
+                    text = "Bedankt voor het kijken"
+                    bbox = draw.textbbox((0, 0), text, font=font_large)
                     x = (width - (bbox[2] - bbox[0])) // 2
-                    draw.text((x, bottom_y), company_website, fill=brand_rgb, font=font_medium)
-                
-                # Logo at bottom right
-                if logo_img:
-                    logo_max_w = int(width * 0.2)
-                    logo_max_h = int(height * 0.12)
-                    logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
-                    logo_size_h = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
-                    logo_resized = logo_img.resize(logo_size_h, Image.LANCZOS)
-                    logo_x = width - logo_size_h[0] - int(width * 0.05)
-                    logo_y = int(height * 0.88)
-                    outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
+                    draw.text((x, height // 2), text, fill="white", font=font_large)
             
             outro_path = os_module.path.join(temp_dir, "outro.jpg")
             outro_img.save(outro_path, "JPEG", quality=95)
