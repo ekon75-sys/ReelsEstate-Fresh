@@ -205,6 +205,16 @@ async def debug_oauth_config():
         "expected_redirect_uri": "https://reels-estate.app/auth/google/callback"
     }
 
+@app.get("/api/debug/cors-test")
+async def debug_cors_test(request: Request):
+    """Debug endpoint to test CORS and cookies"""
+    return {
+        "origin": request.headers.get("origin", "NO ORIGIN"),
+        "cookies": list(request.cookies.keys()),
+        "has_session_cookie": "session_token" in request.cookies,
+        "headers": dict(request.headers)
+    }
+
 # Test MongoDB connection
 @app.get("/api/test-db")
 async def test_db():
