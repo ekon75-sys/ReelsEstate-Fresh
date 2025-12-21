@@ -3071,3 +3071,8 @@ async def generate_project_video(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
 
+
+# Deployment verification endpoint
+@app.get("/api/deploy-check")
+async def deploy_check():
+    return {"deployed": "2025-12-21-15:30", "cors": ["reels-estate.app", "www.reels-estate.app"]}
