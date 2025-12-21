@@ -2698,32 +2698,32 @@ async def generate_project_video(
             intro_img = Image.new('RGB', (width, height), color=(255, 255, 255))
             draw_intro = ImageDraw.Draw(intro_img)
             
-            # Logo at top
-            logo_y_top = int(height * 0.15)
+            # Logo at top center - larger size
+            logo_y_top = int(height * 0.12)
             if logo_img:
-                logo_max_w = int(width * 0.4)
-                logo_max_h = int(height * 0.2)
+                logo_max_w = int(width * 0.5)  # Increased from 0.4
+                logo_max_h = int(height * 0.25)  # Increased from 0.2
                 logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                 logo_size = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                 logo_resized = logo_img.resize(logo_size, Image.LANCZOS)
                 logo_x = (width - logo_size[0]) // 2
                 intro_img.paste(logo_resized, (logo_x, logo_y_top), logo_resized if logo_resized.mode == 'RGBA' else None)
             
-            # "presents" in the middle (centered)
+            # "presents" in the middle (centered) - using larger font
             presents_text = "presents"
-            bbox_presents = draw_intro.textbbox((0, 0), presents_text, font=font_medium)
+            bbox_presents = draw_intro.textbbox((0, 0), presents_text, font=font_large)
             presents_w = bbox_presents[2] - bbox_presents[0]
             presents_h = bbox_presents[3] - bbox_presents[1]
             presents_x = (width - presents_w) // 2
-            presents_y = (height - presents_h) // 2
-            draw_intro.text((presents_x, presents_y), presents_text, fill=brand_rgb, font=font_medium)
+            presents_y = int(height * 0.48)
+            draw_intro.text((presents_x, presents_y), presents_text, fill=brand_rgb, font=font_large)
             
-            # Title below presents
-            bbox_title = draw_intro.textbbox((0, 0), title, font=font_large)
+            # Title below presents - using XLARGE font for maximum visibility
+            bbox_title = draw_intro.textbbox((0, 0), title, font=font_xlarge)
             title_w = bbox_title[2] - bbox_title[0]
             title_x = (width - title_w) // 2
-            title_y = presents_y + presents_h + int(height * 0.08)
-            draw_intro.text((title_x, title_y), title, fill=(50, 50, 50), font=font_large)
+            title_y = presents_y + presents_h + int(height * 0.06)
+            draw_intro.text((title_x, title_y), title, fill=(50, 50, 50), font=font_xlarge)
             
             intro_path = os_module.path.join(temp_dir, "intro.jpg")
             intro_img.save(intro_path, "JPEG", quality=95)
