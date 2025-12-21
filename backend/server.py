@@ -2652,14 +2652,14 @@ async def generate_project_video(
             duration_per_photo = 4  # seconds per photo
             
             # Font sizes based on video dimensions - 5X LARGER for intro/outro
-            font_size_xlarge = max(200, int(height * 0.35))   # Extra large for title - 5x bigger
-            font_size_large = max(150, int(height * 0.25))    # Large for headers - 5x bigger
-            font_size_medium = max(100, int(height * 0.18))   # Medium for subtitles - 5x bigger
-            font_size_small = max(70, int(height * 0.12))     # Small for details - 5x bigger
+            font_size_xlarge = max(250, int(height * 0.40))   # Extra large for title - very big
+            font_size_large = max(180, int(height * 0.30))    # Large for headers 
+            font_size_medium = max(120, int(height * 0.20))   # Medium for subtitles
+            font_size_small = max(80, int(height * 0.14))     # Small for details
             
             # Banner fonts - need to be large because image is 1.2x video size
-            font_size_banner = max(60, int(height * 0.08))    # Banner text - visible
-            font_size_caption = max(50, int(height * 0.06))   # Caption text - visible
+            font_size_banner = max(70, int(height * 0.10))    # Banner text - very visible
+            font_size_caption = max(55, int(height * 0.08))   # Caption text - visible
             
             try:
                 font_xlarge = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size_xlarge)
