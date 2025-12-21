@@ -485,39 +485,45 @@ const GenerateVideo = () => {
                 <span className="text-sm text-gray-500">Je plan: <strong>{userPlan}</strong></span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {allowedQualities.map(quality => (
-                  <Card
-                    key={quality.value}
-                    className={`cursor-pointer transition-all relative ${
-                      !quality.allowed 
-                        ? 'opacity-50 cursor-not-allowed border-gray-200'
-                        : selectedQuality === quality.value
-                          ? 'border-brand-orange-500 border-2 bg-brand-orange-50'
-                          : 'border-gray-200 hover:border-brand-orange-300'
-                    }`}
-                    onClick={() => quality.allowed && setSelectedQuality(quality.value)}
-                  >
-                    {!quality.allowed && (
-                      <div className="absolute top-1 right-1">
-                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                          Upgrade
-                        </span>
-                      </div>
-                    )}
-                    <CardContent className="p-4 text-center">
-                      <h4 className="font-semibold">{quality.label}</h4>
-                      <p className="text-xs text-gray-500">{quality.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                {allowedQualities.map(quality => {
+                  const planRequired = {
+                    'sd': 'Basic',
+                    'hd': 'Professional', 
+                    'fullhd': 'Enterprise',
+                    '4k': 'AI Caption'
+                  };
+                  return (
+                    <Card
+                      key={quality.value}
+                      className={`cursor-pointer transition-all relative ${
+                        !quality.allowed 
+                          ? 'opacity-60 cursor-not-allowed border-gray-200'
+                          : selectedQuality === quality.value
+                            ? 'border-brand-orange-500 border-2 bg-brand-orange-50'
+                            : 'border-gray-200 hover:border-brand-orange-300'
+                      }`}
+                      onClick={() => quality.allowed && setSelectedQuality(quality.value)}
+                    >
+                      {!quality.allowed && (
+                        <div className="absolute top-1 right-1">
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
+                            {planRequired[quality.value]}+
+                          </span>
+                        </div>
+                      )}
+                      <CardContent className="p-4 text-center">
+                        <h4 className="font-semibold">{quality.label}</h4>
+                        <p className="text-xs text-gray-500">{quality.description}</p>
+                        {!quality.allowed && (
+                          <p className="text-xs text-orange-600 mt-1">
+                            Vereist {planRequired[quality.value]} plan
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-              {allowedQualities.some(q => !q.allowed) && (
-                <p className="text-sm text-gray-500 text-center">
-                  <a href="/settings/subscription" className="text-brand-orange-500 hover:underline">
-                    Upgrade je plan
-                  </a> voor hogere videokwaliteit
-                </p>
-              )}
             </div>
 
             {/* Generate Button */}
