@@ -2733,95 +2733,98 @@ async def generate_project_video(
                 """Create a clip with Ken Burns (pan/zoom) effect"""
                 clip = ImageClip(img_path, duration=duration)
                 
-                # Scale factor for pan effects (image is 1.2x larger than video)
-                pan_range = 0.1  # 10% pan range
-                zoom_range = 0.08  # 8% zoom range
+                # Image is 1.2x video size, so we have 10% overflow on each side
+                # Keep movements subtle to ensure image stays in frame
+                zoom_range = 0.06  # 6% zoom (safe within 20% overflow)
+                # Pan values are offsets from center - keep small
+                max_pan_x = width * 0.08  # 8% of width
+                max_pan_y = height * 0.08  # 8% of height
                 
-                # Extended Ken Burns effects
+                # Extended Ken Burns effects - all stay within safe zone
                 if effect_type == 0:
-                    # Zoom in slowly
+                    # Zoom in slowly from center
                     clip = clip.resized(lambda t: 1 + zoom_range * t / duration)
                     clip = clip.with_position('center')
                     
                 elif effect_type == 1:
-                    # Zoom out slowly
-                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * t / duration)
+                    # Zoom out slowly to center
+                    clip = clip.resized(lambda t: 1.06 - zoom_range * t / duration)
                     clip = clip.with_position('center')
                     
                 elif effect_type == 2:
-                    # Pan left to right
+                    # Pan left to right (subtle)
                     clip = clip.with_position(lambda t: (
-                        -width * pan_range + (width * pan_range * 2) * t / duration,
-                        'center'
+                        (width - clip.w) / 2 - max_pan_x + (max_pan_x * 2) * t / duration,
+                        (height - clip.h) / 2
                     ))
                     
                 elif effect_type == 3:
-                    # Pan right to left
+                    # Pan right to left (subtle)
                     clip = clip.with_position(lambda t: (
-                        width * pan_range - (width * pan_range * 2) * t / duration,
-                        'center'
+                        (width - clip.w) / 2 + max_pan_x - (max_pan_x * 2) * t / duration,
+                        (height - clip.h) / 2
                     ))
                     
                 elif effect_type == 4:
-                    # Pan top to bottom
+                    # Pan top to bottom (subtle)
                     clip = clip.with_position(lambda t: (
-                        'center',
-                        -height * pan_range + (height * pan_range * 2) * t / duration
+                        (width - clip.w) / 2,
+                        (height - clip.h) / 2 - max_pan_y + (max_pan_y * 2) * t / duration
                     ))
                     
                 elif effect_type == 5:
-                    # Pan bottom to top
+                    # Pan bottom to top (subtle)
                     clip = clip.with_position(lambda t: (
-                        'center',
-                        height * pan_range - (height * pan_range * 2) * t / duration
+                        (width - clip.w) / 2,
+                        (height - clip.h) / 2 + max_pan_y - (max_pan_y * 2) * t / duration
                     ))
                     
                 elif effect_type == 6:
                     # Zoom in + pan left to right
                     clip = clip.resized(lambda t: 1 + zoom_range * 0.5 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        -width * pan_range * 0.5 + (width * pan_range) * t / duration,
-                        'center'
+                        (width - clip.w) / 2 - max_pan_x * 0.5 + (max_pan_x) * t / duration,
+                        (height - clip.h) / 2
                     ))
                     
                 elif effect_type == 7:
                     # Zoom in + pan right to left
                     clip = clip.resized(lambda t: 1 + zoom_range * 0.5 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        width * pan_range * 0.5 - (width * pan_range) * t / duration,
-                        'center'
+                        (width - clip.w) / 2 + max_pan_x * 0.5 - (max_pan_x) * t / duration,
+                        (height - clip.h) / 2
                     ))
                     
                 elif effect_type == 8:
                     # Zoom out + pan top to bottom
-                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * 0.5 * t / duration)
+                    clip = clip.resized(lambda t: 1.06 - zoom_range * 0.5 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        'center',
-                        -height * pan_range * 0.5 + (height * pan_range) * t / duration
+                        (width - clip.w) / 2,
+                        (height - clip.h) / 2 - max_pan_y * 0.5 + (max_pan_y) * t / duration
                     ))
                     
                 elif effect_type == 9:
                     # Zoom out + pan bottom to top
-                    clip = clip.resized(lambda t: 1 + zoom_range - zoom_range * 0.5 * t / duration)
+                    clip = clip.resized(lambda t: 1.06 - zoom_range * 0.5 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        'center',
-                        height * pan_range * 0.5 - (height * pan_range) * t / duration
+                        (width - clip.w) / 2,
+                        (height - clip.h) / 2 + max_pan_y * 0.5 - (max_pan_y) * t / duration
                     ))
                     
                 elif effect_type == 10:
-                    # Diagonal pan: top-left to bottom-right + zoom
+                    # Diagonal: top-left to bottom-right + zoom
                     clip = clip.resized(lambda t: 1 + zoom_range * 0.3 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        -width * pan_range * 0.5 + (width * pan_range) * t / duration,
-                        -height * pan_range * 0.5 + (height * pan_range) * t / duration
+                        (width - clip.w) / 2 - max_pan_x * 0.4 + (max_pan_x * 0.8) * t / duration,
+                        (height - clip.h) / 2 - max_pan_y * 0.4 + (max_pan_y * 0.8) * t / duration
                     ))
                     
                 else:
-                    # Diagonal pan: bottom-right to top-left + zoom
+                    # Diagonal: bottom-right to top-left + zoom
                     clip = clip.resized(lambda t: 1 + zoom_range * 0.3 * t / duration)
                     clip = clip.with_position(lambda t: (
-                        width * pan_range * 0.5 - (width * pan_range) * t / duration,
-                        height * pan_range * 0.5 - (height * pan_range) * t / duration
+                        (width - clip.w) / 2 + max_pan_x * 0.4 - (max_pan_x * 0.8) * t / duration,
+                        (height - clip.h) / 2 + max_pan_y * 0.4 - (max_pan_y * 0.8) * t / duration
                     ))
                 
                 container = ColorClip(size=(width, height), color=(0, 0, 0), duration=duration)
