@@ -3015,87 +3015,87 @@ async def generate_project_video(
             
             if is_vertical:
                 # Vertical layout (9:16) - WHITE BACKGROUND
-                # "For more Info" title at top in brand color
+                # "For more Info" title at top in brand color - USE XLARGE FONT
                 info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_large)
+                bbox_info = draw.textbbox((0, 0), info_title, font=font_xlarge)
                 info_w = bbox_info[2] - bbox_info[0]
                 info_x = (width - info_w) // 2
-                info_y = int(height * 0.06)
-                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_large)
+                info_y = int(height * 0.05)
+                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_xlarge)
                 
                 # Agent photo in center (circular)
-                photo_y_start = int(height * 0.15)
+                photo_y_start = int(height * 0.18)
                 if agent_photo_img:
-                    photo_size = int(width * 0.45)
+                    photo_size = int(width * 0.50)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
                     photo_x = (width - photo_size) // 2
                     outro_img.paste(agent_photo_resized, (photo_x, photo_y_start), mask)
-                    y_pos = photo_y_start + photo_size + int(height * 0.04)
+                    y_pos = photo_y_start + photo_size + int(height * 0.03)
                 else:
                     y_pos = int(height * 0.35)
                 
-                # Agent info below photo
+                # Agent info below photo - using LARGE font for name
                 if agent:
                     if agent.get("name"):
-                        bbox = draw.textbbox((0, 0), agent["name"], font=font_large)
+                        bbox = draw.textbbox((0, 0), agent["name"], font=font_xlarge)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["name"], fill=text_color, font=font_large)
-                        y_pos += int(height * 0.07)
+                        draw.text((x, y_pos), agent["name"], fill=text_color, font=font_xlarge)
+                        y_pos += int(height * 0.09)
                     if agent.get("phone"):
-                        bbox = draw.textbbox((0, 0), agent["phone"], font=font_medium)
+                        bbox = draw.textbbox((0, 0), agent["phone"], font=font_large)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["phone"], fill=text_color, font=font_medium)
-                        y_pos += int(height * 0.05)
+                        draw.text((x, y_pos), agent["phone"], fill=text_color, font=font_large)
+                        y_pos += int(height * 0.06)
                     if agent.get("email"):
-                        bbox = draw.textbbox((0, 0), agent["email"], font=font_small)
+                        bbox = draw.textbbox((0, 0), agent["email"], font=font_medium)
                         x = (width - (bbox[2] - bbox[0])) // 2
-                        draw.text((x, y_pos), agent["email"], fill=text_color, font=font_small)
-                        y_pos += int(height * 0.05)
+                        draw.text((x, y_pos), agent["email"], fill=text_color, font=font_medium)
+                        y_pos += int(height * 0.06)
                 
-                # Website at bottom
+                # Website at bottom - LARGE font
                 if company_website:
-                    bbox = draw.textbbox((0, 0), company_website, font=font_medium)
+                    bbox = draw.textbbox((0, 0), company_website, font=font_large)
                     x = (width - (bbox[2] - bbox[0])) // 2
-                    y = int(height * 0.88)
-                    draw.text((x, y), company_website, fill=brand_rgb, font=font_medium)
+                    y = int(height * 0.85)
+                    draw.text((x, y), company_website, fill=brand_rgb, font=font_large)
                 
                 # Logo at very bottom
                 if logo_img:
-                    logo_max_w = int(width * 0.35)
-                    logo_max_h = int(height * 0.08)
+                    logo_max_w = int(width * 0.40)
+                    logo_max_h = int(height * 0.10)
                     logo_ratio = min(logo_max_w / logo_img.width, logo_max_h / logo_img.height)
                     logo_size_v = (int(logo_img.width * logo_ratio), int(logo_img.height * logo_ratio))
                     logo_resized = logo_img.resize(logo_size_v, Image.LANCZOS)
                     logo_x = (width - logo_size_v[0]) // 2
-                    logo_y = int(height * 0.92)
+                    logo_y = int(height * 0.91)
                     outro_img.paste(logo_resized, (logo_x, logo_y), logo_resized if logo_resized.mode == 'RGBA' else None)
             else:
                 # Horizontal layout (16:9 or 1:1) - WHITE BACKGROUND
-                # "For more Info" title at top center in brand color
+                # "For more Info" title at top center in brand color - USE XLARGE FONT
                 info_title = "For more Info"
-                bbox_info = draw.textbbox((0, 0), info_title, font=font_large)
+                bbox_info = draw.textbbox((0, 0), info_title, font=font_xlarge)
                 info_w = bbox_info[2] - bbox_info[0]
                 info_x = (width - info_w) // 2
-                info_y = int(height * 0.08)
-                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_large)
+                info_y = int(height * 0.06)
+                draw.text((info_x, info_y), info_title, fill=brand_rgb, font=font_xlarge)
                 
                 # Agent photo on left side (circular)
-                agent_section_y = int(height * 0.25)
+                agent_section_y = int(height * 0.22)
                 if agent_photo_img:
-                    photo_size = int(height * 0.45)
+                    photo_size = int(height * 0.50)
                     agent_photo_resized = agent_photo_img.resize((photo_size, photo_size), Image.LANCZOS)
                     mask = Image.new('L', (photo_size, photo_size), 0)
                     mask_draw = ImageDraw.Draw(mask)
                     mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
-                    photo_x = int(width * 0.12)
+                    photo_x = int(width * 0.10)
                     photo_y = agent_section_y
                     outro_img.paste(agent_photo_resized, (photo_x, photo_y), mask)
-                    text_x = photo_x + photo_size + int(width * 0.06)
+                    text_x = photo_x + photo_size + int(width * 0.05)
                 else:
-                    text_x = int(width * 0.2)
+                    text_x = int(width * 0.15)
                 
                 # Agent info on right side
                 y_pos = agent_section_y + int(height * 0.05)
