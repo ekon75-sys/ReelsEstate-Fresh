@@ -2878,8 +2878,8 @@ async def generate_project_video(
                 resized_path = os_module.path.join(temp_dir, f"resized_{i}.jpg")
                 img.save(resized_path, "JPEG", quality=95)
                 
-                # Create clip with Ken Burns effect
-                effect_type = i % 4  # Alternate between different effects
+                # Create clip with Ken Burns effect - cycle through all 12 effects
+                effect_type = i % 12  # Alternate between all 12 different effects
                 photo_clip = create_ken_burns_clip(resized_path, duration_per_photo, width, height, effect_type)
                 all_clips.append(photo_clip)
             
